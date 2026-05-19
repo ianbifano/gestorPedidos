@@ -5,26 +5,52 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Colores profesionales
+const primaryLight = '#007AFF';
+const primaryDark = '#0A84FF';
+const accentLight = '#FF9500';
+const accentDark = '#FFB340';
+const successLight = '#34C759';
+const dangerLight = '#FF3B30';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: '#1C1C1E',
+    background: '#FFFFFF',
+    tint: primaryLight,
+    icon: '#8E8E93',
+    tabIconDefault: '#8E8E93',
+    tabIconSelected: primaryLight,
+    secondary: '#5AC8FA',
+    accent: accentLight,
+    success: successLight,
+    danger: dangerLight,
+    border: '#E5E5EA',
+    card: '#F9F9F9',
+    lightGray: '#F2F2F7',
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: '#F5F5F7',
+    background: '#000000',
+    tint: primaryDark,
+    icon: '#8E8E93',
+    tabIconDefault: '#8E8E93',
+    tabIconSelected: primaryDark,
+    secondary: '#5AC8FA',
+    accent: accentDark,
+    success: successLight,
+    danger: dangerLight,
+    border: '#38383A',
+    card: '#1C1C1E',
+    lightGray: '#2C2C2E',
   },
+};
+
+// Estados por color
+export const StateColors = {
+  pending: { light: '#FFB74D', dark: '#FFA500' },
+  inProcess: { light: '#42A5F5', dark: '#5AC8FA' },
+  completed: { light: '#66BB6A', dark: '#34C759' },
 };
 
 export const Fonts = Platform.select({
