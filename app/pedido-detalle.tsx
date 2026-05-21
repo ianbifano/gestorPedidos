@@ -1,4 +1,5 @@
 import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { EstadoPedido } from '@/types/pedido';
 import { useRouter, useSearchParams } from 'expo-router';
@@ -16,7 +17,8 @@ import {
 const ESTADOS: EstadoPedido[] = ['Pendiente', 'En proceso', 'Entregado'];
 
 export default function PedidoDetalleScreen() {
-  const { pedidos, updatePedido, loading: pedidosLoading } = usePedidos();
+  const { pedidos, updatePedido, loading: pedidosLoading, deletePedido } = usePedidos();
+  const { show: showToast } = useToast();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
@@ -49,9 +51,10 @@ export default function PedidoDetalleScreen() {
     try {
       setLoadingUpdate(true);
       await updatePedido(pedido.id, { estado: newEstado });
-      Alert.alert('Éxito', `Pedido actualizado a ${newEstado}`);
+      showToast(`✓ Actualizado a ${newEstado}`, 'success');
     } catch (err) {
-      Alert.alert('Error', 'No se pudo actualizar el estado');
+      const mensaje = err instanceof Error ? err.message : 'No se pudo actualizar el estado';
+      showToast(mensaje, 'error');
     } finally {
       setLoadingUpdate(false);
     }
@@ -102,15 +105,13 @@ export default function PedidoDetalleScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Creado:</Text>
               <Text style={styles.infoValue}>
-                {new Date(pedido.created_at).toLocaleDateString('es-AR')} {}
-                {new Date(pedido.created_at).toLocaleTimeString('es-AR')}
+                {new Date(pedido.created_at).toLocaleDateString('es-AR')} {new Date(pedido.created_at).toLocaleTimeString('es-AR')}
               </Text>
             </View>
             <View style={[styles.infoRow, styles.borderTop]}>
               <Text style={styles.infoLabel}>Actualizado:</Text>
               <Text style={styles.infoValue}>
-                {new Date(pedido.updated_at).toLocaleDateString('es-AR')} {}
-                {new Date(pedido.updated_at).toLocaleTimeString('es-AR')}
+                {new Date(pedido.updated_at).toLocaleDateString('es-AR')} {new Date(pedido.updated_at).toLocaleTimeString('es-AR')}
               </Text>
             </View>
           </View>
@@ -162,12 +163,12 @@ export default function PedidoDetalleScreen() {
                       onPress: async () => {
                         try {
                           setLoadingUpdate(true);
-                          const { deletePedido } = usePedidos();
                           await deletePedido(pedido.id);
-                          Alert.alert('Éxito', 'Pedido eliminado');
+                          showToast('✓ Pedido eliminado', 'success');
                           router.back();
                         } catch (err) {
-                          Alert.alert('Error', 'No se pudo eliminar el pedido');
+                          const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el pedido';
+                          showToast(mensaje, 'error');
                         } finally {
                           setLoadingUpdate(false);
                         }

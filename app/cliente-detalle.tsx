@@ -1,4 +1,5 @@
 import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { useRouter, useSearchParams } from 'expo-router';
@@ -15,6 +16,7 @@ import {
 export default function ClienteDetalleScreen() {
   const { clientes, deleteCliente } = useClientes();
   const { pedidos } = usePedidos();
+  const { show: showToast } = useToast();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
@@ -49,10 +51,11 @@ export default function ClienteDetalleScreen() {
           onPress: async () => {
             try {
               await deleteCliente(cliente.id);
-              Alert.alert('Éxito', 'Cliente eliminado');
+              showToast('✓ Cliente eliminado', 'success');
               router.back();
             } catch (err) {
-              Alert.alert('Error', 'No se pudo eliminar el cliente');
+              const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el cliente';
+              showToast(mensaje, 'error');
             }
           },
           style: 'destructive',

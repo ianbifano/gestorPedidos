@@ -1,11 +1,14 @@
 import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
+import { Validators } from '@/hooks/validators';
 import { useRouter, useSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 
 export default function EditarClienteScreen() {
-  const { clientes, updateCliente } = useClientes() as any;
+  const { clientes, updateCliente } = useClientes();
+  const { show: showToast } = useToast();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
@@ -14,7 +17,7 @@ export default function EditarClienteScreen() {
   const [telefono, setTelefono] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const cliente = id ? clientes.find((c: any) => c.id === id) : null;
+  const cliente = id ? clientes.find((c) => c.id === id) : null;
 
   useEffect(() => {
     if (cliente) {
@@ -35,34 +38,28 @@ export default function EditarClienteScreen() {
   }
 
   const handleSave = async () => {
-    if (!nombre.trim()) {
-      Alert.alert('Error', 'El nombre es obligatorio');
+    // Validar nombre
+    const validNombre = Validators.nombre(nombre);
+    if (!validNombre.valid) {
+      showToast(validNombre.error || 'Error', 'error');
       return;
     }
 
-    if (nombre.trim().length < 2) {
-      Alert.alert('Error', 'El nombre debe tener al menos 2 caracteres');
-      return;
-    }
-
-    const telefonoTrimmed = telefono.trim();
-    if (telefonoTrimmed && telefonoTrimmed.length < 7) {
-      Alert.alert('Error', 'El teléfono no parece válido');
+    // Validar teléfono
+    const validTelefono = Validators.telefono(telefono);
+    if (!validTelefono.valid) {
+      showToast(validTelefono.error || 'Error', 'error');
       return;
     }
 
     try {
       setLoading(true);
-      if (updateCliente) {
-        await updateCliente(id, {
-          nombre: nombre.trim(),
-          telefono: telefonoTrimmed || null,
-        });
-      }
-      Alert.alert('Éxito', 'Cliente actualizado correctamente');
+      await updateCliente(id, nombre.trim(), telefono.trim() || undefined);
+      showToast('✓ Cliente actualizado correctamente', 'success');
       router.back();
     } catch (err) {
-      Alert.alert('Error', 'No se pudo actualizar el cliente');
+      const mensajeError = err instanceof Error ? err.message : 'No se pudo actualizar el cliente';
+      showToast(mensajeError, 'error');
     } finally {
       setLoading(false);
     }

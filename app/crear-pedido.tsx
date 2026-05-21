@@ -1,4 +1,5 @@
 import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { Validators, sanitizeInput } from '@/hooks/validators';
@@ -6,7 +7,6 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     Modal,
     StyleSheet,
@@ -25,25 +25,26 @@ export default function CrearPedidoScreen() {
 
   const { createPedido, error: pedidoError } = usePedidos();
   const { clientes, loading: clientesLoading, error: clientesError } = useClientes();
+  const { show: showToast } = useToast();
   const router = useRouter();
 
   const handleCreate = async () => {
     if (!clienteId) {
-      Alert.alert('Error', 'Debe seleccionar un cliente');
+      showToast('Debe seleccionar un cliente', 'error');
       return;
     }
 
     // Validar descripción
     const validDescripcion = Validators.descripcion(descripcion);
     if (!validDescripcion.valid) {
-      Alert.alert('Error', validDescripcion.error);
+      showToast(validDescripcion.error || 'Error', 'error');
       return;
     }
 
     // Validar monto
     const validMonto = Validators.monto(monto);
     if (!validMonto.valid) {
-      Alert.alert('Error', validMonto.error);
+      showToast(validMonto.error || 'Error', 'error');
       return;
     }
 
@@ -55,11 +56,11 @@ export default function CrearPedidoScreen() {
         descripcion: sanitizeInput(descripcion.trim()),
         monto: montoNumber,
       });
-      Alert.alert('Éxito', 'Pedido creado correctamente');
+      showToast('✓ Pedido creado correctamente', 'success');
       router.back();
     } catch (err) {
       const mensajeError = err instanceof Error ? err.message : (pedidoError || 'No se pudo crear el pedido');
-      Alert.alert('Error', mensajeError);
+      showToast(mensajeError, 'error');
     } finally {
       setLoading(false);
     }

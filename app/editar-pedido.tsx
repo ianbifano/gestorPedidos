@@ -1,10 +1,11 @@
 import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
 import { usePedidos } from '@/hooks/use-pedidos';
+import { Validators, sanitizeInput } from '@/hooks/validators';
 import { useRouter, useSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     StyleSheet,
     Text,
     TextInput,
@@ -14,6 +15,7 @@ import {
 
 export default function EditarPedidoScreen() {
   const { pedidos, updatePedido } = usePedidos();
+  const { show: showToast } = useToast();
   const router = useRouter();
   const params = useSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
@@ -43,37 +45,32 @@ export default function EditarPedidoScreen() {
   }
 
   const handleSave = async () => {
-    if (!descripcion.trim()) {
-      Alert.alert('Error', 'La descripción es obligatoria');
+    // Validar descripción
+    const validDescripcion = Validators.descripcion(descripcion);
+    if (!validDescripcion.valid) {
+      showToast(validDescripcion.error || 'Error', 'error');
       return;
     }
 
-    if (descripcion.trim().length < 5) {
-      Alert.alert('Error', 'La descripción debe tener al menos 5 caracteres');
-      return;
-    }
-
-    if (!monto.trim()) {
-      Alert.alert('Error', 'El monto es obligatorio');
-      return;
-    }
-
-    const montoNumber = parseFloat(monto);
-    if (isNaN(montoNumber) || montoNumber <= 0) {
-      Alert.alert('Error', 'El monto debe ser un número mayor a 0');
+    // Validar monto
+    const validMonto = Validators.monto(monto);
+    if (!validMonto.valid) {
+      showToast(validMonto.error || 'Error', 'error');
       return;
     }
 
     try {
       setLoading(true);
+      const montoNumber = parseFloat(monto);
       await updatePedido(id, {
-        descripcion: descripcion.trim(),
+        descripcion: sanitizeInput(descripcion.trim()),
         monto: montoNumber,
       });
-      Alert.alert('Éxito', 'Pedido actualizado correctamente');
+      showToast('✓ Pedido actualizado correctamente', 'success');
       router.back();
     } catch (err) {
-      Alert.alert('Error', 'No se pudo actualizar el pedido');
+      const mensajeError = err instanceof Error ? err.message : 'No se pudo actualizar el pedido';
+      showToast(mensajeError, 'error');
     } finally {
       setLoading(false);
     }
