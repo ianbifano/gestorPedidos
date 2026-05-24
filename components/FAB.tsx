@@ -9,7 +9,7 @@ interface FABProps {
   position?: 'center' | 'right';
 }
 
-export function FAB({ onPress, icon = 'plus', label = '', position = 'right' }: FABProps) {
+export function FAB({ onPress, icon = 'plus', label = '', position = 'right', pack = 'material' }: FABProps) {
   return (
     <TouchableOpacity
       style={[
@@ -19,7 +19,7 @@ export function FAB({ onPress, icon = 'plus', label = '', position = 'right' }: 
       onPress={onPress}
       activeOpacity={0.8}>
       <View style={styles.fabContent}>
-        <IconSymbol size={28} name={icon} color="white" />
+        <IconSymbol size={28} pack={pack} name={icon} color="white" />
         {label && <Text style={styles.fabLabel}>{label}</Text>}
       </View>
     </TouchableOpacity>

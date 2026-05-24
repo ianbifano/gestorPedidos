@@ -1,7 +1,7 @@
-import { ThemedView } from '@/components/themed-view';
 import { ClienteCard } from '@/components/ClienteCard';
+import { ThemedView } from '@/components/themed-view';
 import { useClientes } from '@/hooks/use-clientes';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -10,11 +10,9 @@ export default function ClientesScreen() {
   const router = useRouter();
 
   // Refetch cuando vuelves a la pantalla
-  useFocusEffect(
-    useCallback(() => {
-      fetchClientes();
-    }, [fetchClientes])
-  );
+  useCallback(() => {
+    fetchClientes();
+  }, [fetchClientes])
 
   if (loading) {
     return (
