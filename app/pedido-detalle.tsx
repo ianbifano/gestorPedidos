@@ -2,16 +2,16 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { EstadoPedido } from '@/types/pedido';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 const ESTADOS: EstadoPedido[] = ['Pendiente', 'En proceso', 'Entregado'];
@@ -20,7 +20,7 @@ export default function PedidoDetalleScreen() {
   const { pedidos, updatePedido, loading: pedidosLoading, deletePedido } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams ();
   const id = params.id ? parseInt(params.id as string) : null;
   const [loadingUpdate, setLoadingUpdate] = useState(false);
 

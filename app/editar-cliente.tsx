@@ -2,15 +2,15 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
 import { Validators } from '@/hooks/validators';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 
 export default function EditarClienteScreen() {
   const { clientes, updateCliente } = useClientes();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams ();
   const id = params.id ? parseInt(params.id as string) : null;
 
   const [nombre, setNombre] = useState('');

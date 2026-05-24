@@ -2,7 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { Validators, sanitizeInput } from '@/hooks/validators';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -17,7 +17,7 @@ export default function EditarPedidoScreen() {
   const { pedidos, updatePedido } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams ();
   const id = params.id ? parseInt(params.id as string) : null;
 
   const [descripcion, setDescripcion] = useState('');

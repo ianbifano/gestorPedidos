@@ -1,15 +1,15 @@
-import { ThemedView } from '@/components/themed-view';
 import { PedidoCard } from '@/components/PedidoCard';
+import { ThemedView } from '@/components/themed-view';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { EstadoPedido } from '@/types/pedido';
-import { useRouter, useSearchParams, useFocusEffect } from 'expo-router';
-import React, { useMemo, useCallback } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function PedidosScreen() {
   const { pedidos, loading, error, fetchPedidos } = usePedidos();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams ();
   const estado = params.estado as EstadoPedido | undefined;
 
   // Refetch cuando vuelves a la pantalla

@@ -2,7 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
     Alert,
@@ -18,7 +18,7 @@ export default function ClienteDetalleScreen() {
   const { pedidos } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams ();
   const id = params.id ? parseInt(params.id as string) : null;
 
   const cliente = id ? clientes.find((c) => c.id === id) : null;
