@@ -1,12 +1,13 @@
 import { ProductCard } from '@/components/ProductCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { PRODUCTOS } from '@/constants/Productos';
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useProductos } from '@/hooks/use-productos';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
+    ActivityIndicator,
     FlatList,
     Pressable,
     SafeAreaView,
@@ -14,14 +15,22 @@ import {
     Text,
     View
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function CatalogScreen() {
   const router = useRouter();
   const { addItem, getSummary } = useCart();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { productos, loading, refresh } = useProductos();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   const summary = getSummary();
 
@@ -31,7 +40,7 @@ export default function CatalogScreen() {
       backgroundColor: colors.background,
     },
     contentContainer: {
-      paddingHorizontal: 8,
+      paddingHorizontal: 16,
       paddingTop: 8,
       paddingBottom: 80,
     },
@@ -62,6 +71,12 @@ export default function CatalogScreen() {
       fontSize: 16,
       color: colors.icon,
       marginTop: 12,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingBottom: 80,
     },
     floatingCartContainer: {
       position: 'absolute',
@@ -145,6 +160,22 @@ export default function CatalogScreen() {
     }, 2000);
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Catálogo de Productos</Text>
+          <Text style={styles.headerSubtitle}>
+            Selecciona los productos que deseas
+          </Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.tint} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -154,7 +185,7 @@ export default function CatalogScreen() {
         </Text>
       </View>
 
-      {PRODUCTOS.length === 0 ? (
+      {productos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <IconSymbol
             size={64}
@@ -168,9 +199,9 @@ export default function CatalogScreen() {
         </View>
       ) : (
         <FlatList
-          data={PRODUCTOS}
+          data={productos}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={1}
           contentContainerStyle={styles.contentContainer}
           renderItem={({ item }) => (
             <ProductCard

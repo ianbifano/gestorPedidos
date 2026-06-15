@@ -3,12 +3,12 @@ import { useCart } from '@/contexts/CartContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import React from 'react';
 import {
-    FlatList,
-    Pressable,
-    SafeAreaView,
-    StyleSheet,
-    Text,
-    View,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { IconSymbol } from './ui/icon-symbol';
 
@@ -182,7 +182,7 @@ export function CartSummary() {
                 <IconSymbol
                   size={16}
                   pack="material"
-                  name="minus"
+                  name="remove"
                   color={colors.tint}
                 />
               </Pressable>
@@ -195,7 +195,7 @@ export function CartSummary() {
                 <IconSymbol
                   size={16}
                   pack="material"
-                  name="plus"
+                  name="add"
                   color={colors.tint}
                 />
               </Pressable>
@@ -207,7 +207,7 @@ export function CartSummary() {
               <IconSymbol
                 size={20}
                 pack="material"
-                name="trash"
+                name="delete"
                 color={colors.danger}
               />
             </Pressable>

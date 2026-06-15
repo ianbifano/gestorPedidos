@@ -3,6 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Product } from '@/types/product';
 import React from 'react';
 import {
+    Image,
     Pressable,
     StyleSheet,
     Text,
@@ -36,10 +37,16 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     },
     imageContainer: {
       width: '100%',
-      height: 140,
+      height: 180,
       backgroundColor: colors.lightGray,
       justifyContent: 'center',
       alignItems: 'center',
+      overflow: 'hidden',
+    },
+    image: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
     },
     imagePlaceholder: {
       width: 60,
@@ -105,14 +112,18 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   return (
     <View style={styles.container}>
       <View style={styles.imageContainer}>
-        <View style={styles.imagePlaceholder}>
-          <IconSymbol
-            size={32}
-            pack="material"
-            name="restaurant"
-            color={colors.tint}
-          />
-        </View>
+        {product.imagen ? (
+          <Image source={{ uri: product.imagen }} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <IconSymbol
+              size={32}
+              pack="material"
+              name="restaurant"
+              color={colors.tint}
+            />
+          </View>
+        )}
       </View>
 
       <View style={styles.content}>
