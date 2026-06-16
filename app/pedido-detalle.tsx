@@ -1,7 +1,7 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { EstadoPedido } from '@/types/pedido';
+import { ESTADOS_PEDIDO } from '@/types/pedido';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -14,17 +14,16 @@ import {
   View,
 } from 'react-native';
 
-const ESTADOS: EstadoPedido[] = ['Pendiente', 'En proceso', 'Entregado'];
-
 export default function PedidoDetalleScreen() {
   const { pedidos, updatePedido, loading: pedidosLoading, deletePedido } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useLocalSearchParams ();
+  const params = useLocalSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
   const [loadingUpdate, setLoadingUpdate] = useState(false);
 
   const pedido = id ? pedidos.find((p) => p.id === id) : null;
+  const estadoNombre = ESTADOS_PEDIDO.find((e) => e.id === pedido?.estado)?.nombre || 'Desconocido';
 
   if (!id || pedidosLoading) {
     return (
@@ -47,11 +46,12 @@ export default function PedidoDetalleScreen() {
     );
   }
 
-  const handleEstadoChange = async (newEstado: EstadoPedido) => {
+  const handleEstadoChange = async (nuevoEstadoId: number) => {
     try {
       setLoadingUpdate(true);
-      await updatePedido(pedido.id, { estado: newEstado });
-      showToast(`✓ Actualizado a ${newEstado}`, 'success');
+      const nuevoNombre = ESTADOS_PEDIDO.find((e) => e.id === nuevoEstadoId)?.nombre || 'Desconocido';
+      await updatePedido(pedido.id, { estado: nuevoEstadoId });
+      showToast(`✓ Actualizado a ${nuevoNombre}`, 'success');
     } catch (err) {
       const mensaje = err instanceof Error ? err.message : 'No se pudo actualizar el estado';
       showToast(mensaje, 'error');
@@ -67,7 +67,7 @@ export default function PedidoDetalleScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Pedido #{pedido.id}</Text>
           <View style={[styles.badge, getBadgeColor(pedido.estado)]}>
-            <Text style={styles.badgeText}>{pedido.estado}</Text>
+            <Text style={styles.badgeText}>{estadoNombre}</Text>
           </View>
         </View>
 
@@ -121,21 +121,21 @@ export default function PedidoDetalleScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cambiar Estado</Text>
           <View style={styles.estadoContainer}>
-            {ESTADOS.map((estado) => (
+            {ESTADOS_PEDIDO.map((est) => (
               <TouchableOpacity
-                key={estado}
+                key={est.id}
                 style={[
                   styles.estadoButton,
-                  pedido.estado === estado && styles.estadoButtonActive,
+                  pedido.estado === est.id && styles.estadoButtonActive,
                 ]}
-                onPress={() => handleEstadoChange(estado)}
-                disabled={loadingUpdate || pedido.estado === estado}>
+                onPress={() => handleEstadoChange(est.id)}
+                disabled={loadingUpdate || pedido.estado === est.id}>
                 <Text
                   style={[
                     styles.estadoButtonText,
-                    pedido.estado === estado && styles.estadoButtonTextActive,
+                    pedido.estado === est.id && styles.estadoButtonTextActive,
                   ]}>
-                  {estado}
+                  {est.nombre}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -201,17 +201,17 @@ export default function PedidoDetalleScreen() {
   );
 }
 
-function getBadgeColor(estado: EstadoPedido) {
-  switch (estado) {
-    case 'Pendiente':
-      return { backgroundColor: '#FFB74D' };
-    case 'En proceso':
-      return { backgroundColor: '#42A5F5' };
-    case 'Entregado':
-      return { backgroundColor: '#66BB6A' };
-    default:
-      return { backgroundColor: '#999' };
-  }
+const BADGE_COLORS: Record<number, string> = {
+  1: '#FFB74D',
+  2: '#42A5F5',
+  3: '#FF7043',
+  4: '#EF5350',
+  5: '#AB47BC',
+  6: '#66BB6A',
+};
+
+function getBadgeColor(estado: number) {
+  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
 const styles = StyleSheet.create({
