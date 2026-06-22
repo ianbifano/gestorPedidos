@@ -1,30 +1,39 @@
-import { supabase } from '@/constants/supabase';
+import { getSupabaseErrorMessage, supabase } from '@/constants/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Cliente } from '@/types/cliente';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { normalizarTelefono } from './validators';
 
 export function useClientes() {
+  const { user } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchClientes = async () => {
+  const fetchClientes = useCallback(async () => {
+    if (!user) {
+      setClientes([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
       const { data, error: err } = await supabase
         .from('clientes')
         .select('*')
+        .eq('user_id', user.id)
         .order('nombre', { ascending: true });
 
       if (err) throw err;
       setClientes(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getSupabaseErrorMessage(err));
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   // Verifica si existe un cliente con el mismo teléfono (excepto el actual)
   const existeTelefono = (telefono: string, clienteIdActual?: number): boolean => {
@@ -41,6 +50,10 @@ export function useClientes() {
     try {
       setError(null);
 
+      if (!user) {
+        throw new Error('Debes iniciar sesión para crear clientes');
+      }
+
       // Verificar duplicado de teléfono
       if (telefono && existeTelefono(telefono)) {
         throw new Error('Ya existe un cliente con este teléfono');
@@ -48,15 +61,15 @@ export function useClientes() {
 
       const { data, error: err } = await supabase
         .from('clientes')
-        .insert([{ nombre, telefono: telefono ? normalizarTelefono(telefono) : null }])
+        .insert([{ user_id: user.id, nombre, telefono: telefono ? normalizarTelefono(telefono) : null }])
         .select()
         .single();
 
       if (err) throw err;
-      setClientes([...clientes, data]);
+      setClientes((currentClientes) => [...currentClientes, data]);
       return data;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al crear cliente';
+      const msg = getSupabaseErrorMessage(err, 'Error al crear cliente');
       setError(msg);
       throw err;
     }
@@ -65,6 +78,10 @@ export function useClientes() {
   const updateCliente = async (id: number, nombre: string, telefono?: string) => {
     try {
       setError(null);
+
+      if (!user) {
+        throw new Error('Debes iniciar sesión para actualizar clientes');
+      }
 
       // Verificar duplicado de teléfono
       if (telefono && existeTelefono(telefono, id)) {
@@ -75,14 +92,15 @@ export function useClientes() {
         .from('clientes')
         .update({ nombre, telefono: telefono ? normalizarTelefono(telefono) : null })
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
       if (err) throw err;
-      setClientes(clientes.map((c) => (c.id === id ? data : c)));
+      setClientes((currentClientes) => currentClientes.map((c) => (c.id === id ? data : c)));
       return data;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar cliente';
+      const msg = getSupabaseErrorMessage(err, 'Error al actualizar cliente');
       setError(msg);
       throw err;
     }
@@ -91,15 +109,21 @@ export function useClientes() {
   const deleteCliente = async (id: number) => {
     try {
       setError(null);
+
+      if (!user) {
+        throw new Error('Debes iniciar sesión para eliminar clientes');
+      }
+
       const { error: err } = await supabase
         .from('clientes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (err) throw err;
-      setClientes(clientes.filter((c) => c.id !== id));
+      setClientes((currentClientes) => currentClientes.filter((c) => c.id !== id));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al eliminar cliente';
+      const msg = getSupabaseErrorMessage(err, 'Error al eliminar cliente');
       setError(msg);
       throw err;
     }
@@ -107,7 +131,7 @@ export function useClientes() {
 
   useEffect(() => {
     fetchClientes();
-  }, []);
+  }, [fetchClientes]);
 
   return { clientes, loading, error, fetchClientes, createCliente, updateCliente, deleteCliente, existeTelefono };
 }

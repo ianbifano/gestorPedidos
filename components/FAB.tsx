@@ -7,6 +7,7 @@ interface FABProps {
   icon?: string;
   label?: string;
   position?: 'center' | 'right';
+  pack?: 'material' | 'ion' | 'feather' | 'fontawesome' | 'ant';
 }
 
 export function FAB({ onPress, icon = 'plus', label = '', position = 'right', pack = 'material' }: FABProps) {

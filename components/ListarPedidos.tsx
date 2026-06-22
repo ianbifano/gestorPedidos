@@ -4,14 +4,14 @@
 import { ThemedView } from '@/components/themed-view';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { EstadoPedido } from '@/types/pedido';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ListarPedidosScreen() {
   const { pedidos, loading, error } = usePedidos();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams();
   const estado = params.estado as EstadoPedido | undefined;
 
   const filteredPedidos = useMemo(() => {
@@ -40,7 +40,7 @@ export default function ListarPedidosScreen() {
           </Text>
           <TouchableOpacity
             style={styles.buttonCreate}
-            onPress={() => router.push('/pedidos/crear')}>
+            onPress={() => router.push('/crear-pedido')}>
             <Text style={styles.buttonText}>+ Crear Pedido</Text>
           </TouchableOpacity>
         </View>
@@ -51,7 +51,7 @@ export default function ListarPedidosScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.pedidoCard}
-              onPress={() => router.push(`/pedidos/${item.id}`)}>
+              onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Pedido #{item.id}</Text>
                 <View style={[styles.badge, getBadgeColor(item.estado)]}>

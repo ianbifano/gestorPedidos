@@ -1,28 +1,10 @@
--- Script para crear schema en Supabase
--- Ejecutar en SQL Editor de Supabase Dashboard
+-- Migracion para aplicar login multiusuario sobre una base existente.
+-- Ejecutar en el SQL Editor de Supabase.
+-- Importante: los registros existentes con user_id NULL no seran visibles
+-- hasta asignarlos manualmente a un usuario de auth.users.
 
--- Tabla de clientes
-CREATE TABLE IF NOT EXISTS clientes (
-  id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
-  nombre TEXT NOT NULL,
-  telefono TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+BEGIN;
 
--- Tabla de pedidos
-CREATE TABLE IF NOT EXISTS pedidos (
-  id BIGSERIAL PRIMARY KEY,
-  user_id UUID NOT NULL DEFAULT auth.uid() REFERENCES auth.users(id) ON DELETE CASCADE,
-  cliente_id BIGINT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
-  descripcion TEXT NOT NULL,
-  monto NUMERIC(10,2) NOT NULL,
-  estado TEXT DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'En proceso', 'Entregado')),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- Compatibilidad si el script se ejecuta sobre tablas creadas antes de auth
 ALTER TABLE clientes
   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
@@ -35,13 +17,11 @@ ALTER TABLE pedidos
 ALTER TABLE pedidos
   ALTER COLUMN user_id SET DEFAULT auth.uid();
 
--- Índices para performance
 CREATE INDEX IF NOT EXISTS idx_clientes_user ON clientes(user_id);
+CREATE INDEX IF NOT EXISTS idx_pedidos_user ON pedidos(user_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_cliente ON pedidos(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado);
-CREATE INDEX IF NOT EXISTS idx_pedidos_user ON pedidos(user_id);
 
--- Habilitar RLS (Row Level Security)
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pedidos ENABLE ROW LEVEL SECURITY;
 
@@ -70,5 +50,9 @@ CREATE POLICY "Users can manage own pedidos" ON pedidos
     )
   );
 
--- Verificación
-SELECT 'Schema creado correctamente' as status;
+COMMIT;
+
+-- Para conservar datos existentes, reemplazar <USER_UUID> por el id del usuario
+-- propietario y ejecutar antes de usar la app:
+-- UPDATE clientes SET user_id = '<USER_UUID>' WHERE user_id IS NULL;
+-- UPDATE pedidos SET user_id = '<USER_UUID>' WHERE user_id IS NULL;

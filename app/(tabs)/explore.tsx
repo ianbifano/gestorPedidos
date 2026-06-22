@@ -68,19 +68,6 @@ export default function PedidosScreen() {
   );
 }
 
-function getBadgeColor(estado: EstadoPedido) {
-  switch (estado) {
-    case 'Pendiente':
-      return { backgroundColor: '#FFB74D' };
-    case 'En proceso':
-      return { backgroundColor: '#42A5F5' };
-    case 'Entregado':
-      return { backgroundColor: '#66BB6A' };
-    default:
-      return { backgroundColor: '#999' };
-  }
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

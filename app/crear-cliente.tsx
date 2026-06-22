@@ -4,7 +4,7 @@ import { useClientes } from '@/hooks/use-clientes';
 import { Validators } from '@/hooks/validators';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 
 export default function CrearClienteScreen() {
   const [nombre, setNombre] = useState('');
