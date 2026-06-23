@@ -9,6 +9,7 @@ export const ESTADOS_PEDIDO = [
 
 export interface Pedido {
   id: number;
+  user_id: string;
   cliente_id: number;
   descripcion: string;
   monto: number;

@@ -42,7 +42,7 @@ export default function ListarPedidosScreen() {
           </Text>
           <TouchableOpacity
             style={styles.buttonCreate}
-            onPress={() => router.push('/pedidos/crear')}>
+            onPress={() => router.push('/crear-pedido')}>
             <Text style={styles.buttonText}>+ Crear Pedido</Text>
           </TouchableOpacity>
         </View>
@@ -53,7 +53,7 @@ export default function ListarPedidosScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.pedidoCard}
-              onPress={() => router.push(`/pedidos/${item.id}`)}>
+              onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Pedido #{item.id}</Text>
                 <View style={[styles.badge, getBadgeColor(item.estado)]}>
