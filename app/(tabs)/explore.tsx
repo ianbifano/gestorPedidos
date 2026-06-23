@@ -1,5 +1,7 @@
 import { PedidoCard } from '@/components/PedidoCard';
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
@@ -10,6 +12,9 @@ export default function PedidosScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const estado = params.estado ? parseInt(params.estado as string) : undefined;
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+  const styles = useMemo(() => createStyles(C), [C]);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,9 +46,7 @@ export default function PedidosScreen() {
           <Text style={styles.emptyStateText}>
             {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
-          <TouchableOpacity
-            style={styles.buttonCreate}
-            onPress={() => router.push('/crear-pedido')}>
+          <TouchableOpacity style={styles.buttonCreate} onPress={() => router.push('/crear-pedido')}>
             <Text style={styles.buttonText}>+ Crear Pedido</Text>
           </TouchableOpacity>
         </View>
@@ -52,10 +55,7 @@ export default function PedidosScreen() {
           data={filteredPedidos}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
-            <PedidoCard
-              pedido={item}
-              onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}
-            />
+            <PedidoCard pedido={item} onPress={() => router.push(`/pedido-detalle?id=${item.id}`)} />
           )}
           scrollEnabled={true}
           removeClippedSubviews={true}
@@ -66,40 +66,14 @@ export default function PedidosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 15,
-  },
-  listContent: {
-    paddingVertical: 8,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#999',
-    marginBottom: 20,
-  },
-  buttonCreate: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: 'red',
-    padding: 10,
-    backgroundColor: '#FFE0E0',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-});
+function createStyles(C: typeof Colors.light) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 15 },
+    listContent: { paddingVertical: 8, gap: 10 },
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyStateText: { fontSize: 16, color: C.icon, marginBottom: 20 },
+    buttonCreate: { backgroundColor: C.tint, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
+  });
+}
