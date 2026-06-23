@@ -6,6 +6,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,9 +18,6 @@ export default function ProductosScreen() {
   const { show: showToast } = useToast();
   const router = useRouter();
 
-  // -------------------------
-  // DELETE
-  // -------------------------
   const handleDelete = async (id: number) => {
     console.log('DELETE CLICK ID:', id);
 
@@ -38,18 +36,13 @@ export default function ProductosScreen() {
       await deleteProducto(id);
 
       console.log('DELETE OK');
-
       showToast('Producto eliminado', 'success');
     } catch (err) {
       console.log('DELETE ERROR:', err);
-
       showToast('Error al eliminar producto', 'error');
     }
   };
 
-  // -------------------------
-  // LOADING
-  // -------------------------
   if (loading) {
     return (
       <ThemedView style={styles.center}>
@@ -58,20 +51,17 @@ export default function ProductosScreen() {
     );
   }
 
-  // -------------------------
-  // UI
-  // -------------------------
   return (
     <ThemedView style={styles.container}>
-      {/* BOTÓN CREAR */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => router.push('/nuevo-producto')}
       >
-        <Text style={styles.addButtonText}>+ Nuevo Producto</Text>
+        <Text style={styles.addButtonText}>
+          + Nuevo Producto
+        </Text>
       </TouchableOpacity>
 
-      {/* LISTA */}
       <FlatList
         data={productos}
         keyExtractor={(item) => String(item.id)}
@@ -82,15 +72,28 @@ export default function ProductosScreen() {
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.nombre}>{item.nombre}</Text>
-            <Text style={styles.precio}>${item.precio}</Text>
-            <Text style={styles.estado}>
-              {item.disponible ? 'Disponible' : 'No disponible'}
+            {item.imagen && (
+              <Image
+                source={{ uri: item.imagen }}
+                style={styles.imagen}
+              />
+            )}
+
+            <Text style={styles.nombre}>
+              {item.nombre}
             </Text>
 
-            {/* ACCIONES */}
+            <Text style={styles.precio}>
+              ${item.precio}
+            </Text>
+
+            <Text style={styles.estado}>
+              {item.disponible
+                ? 'Disponible'
+                : 'No disponible'}
+            </Text>
+
             <View style={styles.actions}>
-              {/* EDITAR */}
               <TouchableOpacity
                 style={styles.editButton}
                 onPress={() => {
@@ -105,15 +108,18 @@ export default function ProductosScreen() {
                   });
                 }}
               >
-                <Text style={styles.actionText}>Editar</Text>
+                <Text style={styles.actionText}>
+                  Editar
+                </Text>
               </TouchableOpacity>
 
-              {/* ELIMINAR */}
               <TouchableOpacity
                 style={styles.deleteButton}
                 onPress={() => handleDelete(Number(item.id))}
               >
-                <Text style={styles.actionText}>Eliminar</Text>
+                <Text style={styles.actionText}>
+                  Eliminar
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -123,18 +129,17 @@ export default function ProductosScreen() {
   );
 }
 
-// -------------------------
-// STYLES
-// -------------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
   },
+
   center: {
     flex: 1,
     justifyContent: 'center',
   },
+
   addButton: {
     backgroundColor: '#007AFF',
     padding: 12,
@@ -142,10 +147,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     alignItems: 'center',
   },
+
   addButtonText: {
     color: '#FFF',
     fontWeight: '600',
   },
+
   card: {
     backgroundColor: '#FFF',
     padding: 16,
@@ -154,37 +161,53 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DDD',
   },
+
+  imagen: {
+    width: '100%',
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 10,
+    resizeMode: 'cover',
+  },
+
   nombre: {
     fontSize: 18,
     fontWeight: 'bold',
   },
+
   precio: {
     fontSize: 16,
     marginTop: 4,
   },
+
   estado: {
     marginTop: 4,
     color: '#666',
   },
+
   actions: {
     flexDirection: 'row',
     marginTop: 12,
     gap: 10,
   },
+
   editButton: {
     backgroundColor: '#007AFF',
     padding: 8,
     borderRadius: 6,
   },
+
   deleteButton: {
     backgroundColor: '#FF3B30',
     padding: 8,
     borderRadius: 6,
   },
+
   actionText: {
     color: '#FFF',
     fontWeight: '600',
   },
+
   emptyText: {
     textAlign: 'center',
     marginTop: 30,

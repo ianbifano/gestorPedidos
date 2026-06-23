@@ -7,4 +7,6 @@ export interface Producto {
   disponible: boolean;
   categoria: number;
   comercio_id: number;
+
+  imagen?: string | null; // 👈 AGREGAR ESTO
 }
