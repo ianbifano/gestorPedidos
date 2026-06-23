@@ -2,6 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
+import { ESTADOS_PEDIDO } from '@/types/pedido';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
@@ -18,7 +19,7 @@ export default function ClienteDetalleScreen() {
   const { pedidos } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useLocalSearchParams ();
+  const params = useLocalSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
 
   const cliente = id ? clientes.find((c) => c.id === id) : null;
@@ -64,6 +65,8 @@ export default function ClienteDetalleScreen() {
     );
   };
 
+  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
+
   return (
     <ScrollView style={styles.scrollContainer}>
       <ThemedView style={styles.container}>
@@ -106,7 +109,7 @@ export default function ClienteDetalleScreen() {
             <View style={[styles.statRow, styles.borderTop]}>
               <Text style={styles.statLabel}>Pedidos entregados</Text>
               <Text style={styles.statValue}>
-                {clientePedidos.filter((p) => p.estado === 'Entregado').length}
+                {clientePedidos.filter((p) => p.estado === 6).length}
               </Text>
             </View>
             <View style={[styles.statRow, styles.borderTop]}>
@@ -133,7 +136,7 @@ export default function ClienteDetalleScreen() {
                   <View style={styles.pedidoHeader}>
                     <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
                     <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
-                      <Text style={styles.miniBadgeText}>{pedido.estado}</Text>
+                      <Text style={styles.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
                     </View>
                   </View>
                   <View style={styles.pedidoFooter}>
@@ -171,17 +174,17 @@ export default function ClienteDetalleScreen() {
   );
 }
 
-function getBadgeColor(estado: string) {
-  switch (estado) {
-    case 'Pendiente':
-      return { backgroundColor: '#FFB74D' };
-    case 'En proceso':
-      return { backgroundColor: '#42A5F5' };
-    case 'Entregado':
-      return { backgroundColor: '#66BB6A' };
-    default:
-      return { backgroundColor: '#999' };
-  }
+const BADGE_COLORS: Record<number, string> = {
+  1: '#FFB74D',
+  2: '#42A5F5',
+  3: '#FF7043',
+  4: '#EF5350',
+  5: '#AB47BC',
+  6: '#66BB6A',
+};
+
+function getBadgeColor(estado: number) {
+  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
 const styles = StyleSheet.create({

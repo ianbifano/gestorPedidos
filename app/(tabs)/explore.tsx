@@ -1,7 +1,6 @@
 import { PedidoCard } from '@/components/PedidoCard';
 import { ThemedView } from '@/components/themed-view';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { EstadoPedido } from '@/types/pedido';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -9,10 +8,9 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View }
 export default function PedidosScreen() {
   const { pedidos, loading, error, fetchPedidos } = usePedidos();
   const router = useRouter();
-  const params = useLocalSearchParams ();
-  const estado = params.estado as EstadoPedido | undefined;
+  const params = useLocalSearchParams();
+  const estado = params.estado ? parseInt(params.estado as string) : undefined;
 
-  // Refetch cuando vuelves a la pantalla
   useFocusEffect(
     useCallback(() => {
       fetchPedidos();
@@ -20,7 +18,7 @@ export default function PedidosScreen() {
   );
 
   const filteredPedidos = useMemo(() => {
-    if (estado) {
+    if (estado !== undefined) {
       return pedidos.filter((p) => p.estado === estado);
     }
     return pedidos;
@@ -41,7 +39,7 @@ export default function PedidosScreen() {
       {filteredPedidos.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            {estado ? `No hay pedidos ${estado.toLowerCase()}` : 'No hay pedidos'}
+            {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
           <TouchableOpacity
             style={styles.buttonCreate}

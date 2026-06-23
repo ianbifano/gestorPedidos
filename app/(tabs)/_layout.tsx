@@ -1,35 +1,15 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import React from 'react';
-import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { View } from 'react-native';
 
+import { CartBadge } from '@/components/CartBadge';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const router = useRouter();
-  const { signOut } = useAuth();
-
-  const handleSignOut = () => {
-    Alert.alert('Cerrar sesión', '¿Querés cerrar tu sesión?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-            router.replace('/login' as any);
-          } catch (error) {
-            Alert.alert('Error', error instanceof Error ? error.message : 'No se pudo cerrar sesión');
-          }
-        },
-      },
-    ]);
-  };
 
   return (
     <View style={{ flex: 1 }}>
@@ -39,15 +19,6 @@ export default function TabLayout() {
           headerShown: true,
           tabBarButton: HapticTab,
           tabBarLabelPosition: 'below-icon',
-          headerRight: () => (
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleSignOut}
-              accessibilityRole="button"
-              accessibilityLabel="Cerrar sesión">
-              <IconSymbol size={24} pack="material" name="logout" color={Colors[colorScheme ?? 'light'].tint} />
-            </TouchableOpacity>
-          ),
           tabBarStyle: {
             paddingBottom: 8,
             paddingTop: 8,
@@ -58,7 +29,17 @@ export default function TabLayout() {
           options={{
             title: 'Home',
             headerTitle: 'Gestor de Pedidos',
+            headerLargeTitle: true,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="house" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="catalogo"
+          options={{
+            title: 'Catálogo',
+            headerTitle: 'Catálogo de Productos',
+            headerLargeTitle: true,
+            tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="shopping-bag" color={color} />,
           }}
         />
         <Tabs.Screen
@@ -67,6 +48,20 @@ export default function TabLayout() {
             title: 'Pedidos',
             headerTitle: 'Mis Pedidos',
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="ant" name="dropbox" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="carrito"
+          options={{
+            title: 'Carrito',
+            headerTitle: 'Mi Carrito',
+            headerLargeTitle: true,
+            tabBarIcon: ({ color }) => (
+              <View>
+                <IconSymbol size={28} pack="material" name="shopping-cart" color={color} />
+                <CartBadge />
+              </View>
+            ),
           }}
         />
         <Tabs.Screen
@@ -88,10 +83,3 @@ export default function TabLayout() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  logoutButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-});

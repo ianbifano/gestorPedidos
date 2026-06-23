@@ -33,7 +33,7 @@ export default function CrearClienteScreen() {
       await createCliente(nombre.trim(), telefonoTrimmed || undefined);
       Alert.alert('Éxito', 'Cliente creado correctamente');
       router.back();
-    } catch {
+    } catch (err) {
       Alert.alert('Error', error || 'No se pudo crear el cliente');
     } finally {
       setLoading(false);

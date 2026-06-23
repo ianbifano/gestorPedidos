@@ -1,11 +1,5 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-// Colores profesionales
 const primaryLight = '#007AFF';
 const primaryDark = '#0A84FF';
 const accentLight = '#FF9500';
@@ -46,22 +40,20 @@ export const Colors = {
   },
 };
 
-// Estados por color
-export const StateColors = {
-  pending: { light: '#FFB74D', dark: '#FFA500' },
-  inProcess: { light: '#42A5F5', dark: '#5AC8FA' },
-  completed: { light: '#66BB6A', dark: '#34C759' },
+export const StateColors: Record<number, { light: string; dark: string }> = {
+  1: { light: '#FFB74D', dark: '#FFA500' },
+  2: { light: '#42A5F5', dark: '#5AC8FA' },
+  3: { light: '#FF7043', dark: '#FF8A65' },
+  4: { light: '#EF5350', dark: '#E57373' },
+  5: { light: '#AB47BC', dark: '#CE93D8' },
+  6: { light: '#66BB6A', dark: '#34C759' },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -73,7 +65,6 @@ export const Fonts = Platform.select({
   web: {
     sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
   },
 });
