@@ -1,4 +1,4 @@
-import { Pedido } from '@/types/pedido';
+import { ESTADOS_PEDIDO, Pedido } from '@/types/pedido';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -8,6 +8,7 @@ interface PedidoCardProps {
 }
 
 function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
+  const estadoNombre = ESTADOS_PEDIDO.find((e) => e.id === pedido.estado)?.nombre || 'Desconocido';
   return (
     <TouchableOpacity
       style={styles.pedidoItem}
@@ -16,7 +17,7 @@ function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
       <View style={styles.pedidoHeader}>
         <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
         <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
-          <Text style={styles.miniBadgeText}>{pedido.estado}</Text>
+          <Text style={styles.miniBadgeText}>{estadoNombre}</Text>
         </View>
       </View>
       <Text style={styles.pedidoCliente}>{pedido.cliente?.nombre}</Text>
@@ -35,17 +36,17 @@ function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
 
 export const PedidoCard = React.memo(PedidoCardComponent);
 
-function getBadgeColor(estado: string) {
-  switch (estado) {
-    case 'Pendiente':
-      return { backgroundColor: '#FFB74D' };
-    case 'En proceso':
-      return { backgroundColor: '#42A5F5' };
-    case 'Entregado':
-      return { backgroundColor: '#66BB6A' };
-    default:
-      return { backgroundColor: '#999' };
-  }
+const BADGE_COLORS: Record<number, string> = {
+  1: '#FFB74D',
+  2: '#42A5F5',
+  3: '#FF7043',
+  4: '#EF5350',
+  5: '#AB47BC',
+  6: '#66BB6A',
+};
+
+function getBadgeColor(estado: number) {
+  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
 const styles = StyleSheet.create({
