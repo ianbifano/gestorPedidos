@@ -1,15 +1,18 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import { CartBadge } from '@/components/CartBadge';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { signOut } = useAuth();
+  const C = Colors[colorScheme ?? 'light'];
 
   return (
     <View style={{ flex: 1 }}>
@@ -31,6 +34,11 @@ export default function TabLayout() {
             headerTitle: 'Gestor de Pedidos',
             headerLargeTitle: true,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="house" color={color} />,
+            headerRight: () => (
+              <TouchableOpacity onPress={() => signOut()} style={{ marginRight: 16 }}>
+                <Text style={{ color: C.tint, fontSize: 15, fontWeight: '600' }}>Salir</Text>
+              </TouchableOpacity>
+            ),
           }}
         />
         <Tabs.Screen

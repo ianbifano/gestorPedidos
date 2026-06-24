@@ -1,9 +1,11 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { Validators, sanitizeInput } from '@/hooks/validators';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     StyleSheet,
@@ -17,12 +19,14 @@ export default function EditarPedidoScreen() {
   const { pedidos, updatePedido } = usePedidos();
   const { show: showToast } = useToast();
   const router = useRouter();
-  const params = useLocalSearchParams ();
+  const params = useLocalSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
-
   const [descripcion, setDescripcion] = useState('');
   const [monto, setMonto] = useState('');
   const [loading, setLoading] = useState(false);
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+  const styles = useMemo(() => createStyles(C), [C]);
 
   const pedido = id ? pedidos.find((p) => p.id === id) : null;
 
@@ -45,14 +49,12 @@ export default function EditarPedidoScreen() {
   }
 
   const handleSave = async () => {
-    // Validar descripción
     const validDescripcion = Validators.descripcion(descripcion);
     if (!validDescripcion.valid) {
       showToast(validDescripcion.error || 'Error', 'error');
       return;
     }
 
-    // Validar monto
     const validMonto = Validators.monto(monto);
     if (!validMonto.valid) {
       showToast(validMonto.error || 'Error', 'error');
@@ -82,7 +84,7 @@ export default function EditarPedidoScreen() {
       <TextInput
         style={[styles.input, styles.inputLarge]}
         placeholder="Descripción del pedido"
-        placeholderTextColor="#999"
+        placeholderTextColor={C.icon}
         value={descripcion}
         onChangeText={setDescripcion}
         multiline
@@ -96,7 +98,7 @@ export default function EditarPedidoScreen() {
         <TextInput
           style={styles.inputMonto}
           placeholder="0.00"
-          placeholderTextColor="#999"
+          placeholderTextColor={C.icon}
           value={monto}
           onChangeText={setMonto}
           keyboardType="decimal-pad"
@@ -104,100 +106,31 @@ export default function EditarPedidoScreen() {
         />
       </View>
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleSave}
-        disabled={loading}>
+      <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSave} disabled={loading}>
         {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Guardar Cambios</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.buttonCancel}
-        onPress={() => router.back()}
-        disabled={loading}>
+      <TouchableOpacity style={styles.buttonCancel} onPress={() => router.back()} disabled={loading}>
         <Text style={styles.buttonCancelText}>Cancelar</Text>
       </TouchableOpacity>
     </ThemedView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 20,
-    fontSize: 14,
-    color: '#333',
-  },
-  inputLarge: {
-    textAlignVertical: 'top',
-    height: 100,
-  },
-  montoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  montoSymbol: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 12,
-    color: '#333',
-  },
-  inputMonto: {
-    flex: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#333',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonCancel: {
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#DDD',
-  },
-  buttonCancelText: {
-    color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  notFound: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-  },
-});
+function createStyles(C: typeof Colors.light) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 20 },
+    label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: C.text },
+    input: { borderWidth: 1, borderColor: C.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 20, fontSize: 14, color: C.text, backgroundColor: C.card },
+    inputLarge: { textAlignVertical: 'top', height: 100 },
+    montoContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border, borderRadius: 8, marginBottom: 20, backgroundColor: C.card },
+    montoSymbol: { fontSize: 16, fontWeight: '600', marginLeft: 12, color: C.text },
+    inputMonto: { flex: 1, paddingHorizontal: 8, paddingVertical: 10, fontSize: 14, color: C.text },
+    button: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 20 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+    buttonCancel: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: C.border },
+    buttonCancelText: { color: C.tint, fontSize: 16, fontWeight: '600' },
+    notFound: { fontSize: 16, color: C.icon, textAlign: 'center' },
+  });
+}

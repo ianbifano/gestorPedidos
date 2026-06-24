@@ -1,3 +1,4 @@
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/constants/supabase';
 import { CreatePedidoInput, Pedido, UpdatePedidoInput } from '@/types/pedido';
 import { useCallback, useEffect, useState } from 'react';
@@ -9,6 +10,7 @@ export function usePedidos() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchPedidos = useCallback(async (estado?: number) => {
+    if (!user) return;
     try {
       setLoading(true);
       setError(null);
@@ -30,7 +32,7 @@ export function usePedidos() {
       if (err) throw err;
       setPedidos(data || []);
     } catch (err) {
-      setError(getSupabaseErrorMessage(err));
+      setError(err instanceof Error ? err.message : 'Error desconocido');
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ export function usePedidos() {
       setPedidos((currentPedidos) => [data, ...currentPedidos]);
       return data;
     } catch (err) {
-      const msg = getSupabaseErrorMessage(err, 'Error al crear pedido');
+      const msg = err instanceof Error ? err.message : 'Error al crear pedido';
       setError(msg);
       throw err;
     }
@@ -92,7 +94,7 @@ export function usePedidos() {
       setPedidos(pedidos.map((p) => (p.id === id ? data : p)));
       return data;
     } catch (err) {
-      const msg = getSupabaseErrorMessage(err, 'Error al actualizar pedido');
+      const msg = err instanceof Error ? err.message : 'Error al actualizar pedido';
       setError(msg);
       throw err;
     }
@@ -115,7 +117,7 @@ export function usePedidos() {
       if (err) throw err;
       setPedidos((currentPedidos) => currentPedidos.filter((p) => p.id !== id));
     } catch (err) {
-      const msg = getSupabaseErrorMessage(err, 'Error al eliminar pedido');
+      const msg = err instanceof Error ? err.message : 'Error al eliminar pedido';
       setError(msg);
       throw err;
     }
