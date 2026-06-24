@@ -1,18 +1,20 @@
-// Pantalla de Listar Pedidos
-// Este archivo será movido a app/pedidos/index.tsx
-
 import { ThemedView } from '@/components/themed-view';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { ESTADOS_PEDIDO } from '@/types/pedido';
-import { useRouter, useSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ListarPedidosScreen() {
   const { pedidos, loading, error } = usePedidos();
   const router = useRouter();
-  const params = useSearchParams();
+  const params = useLocalSearchParams();
   const estado = params.estado ? parseInt(params.estado as string) : undefined;
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+  const styles = useMemo(() => createStyles(C), [C]);
 
   const filteredPedidos = useMemo(() => {
     if (estado !== undefined) {
@@ -40,9 +42,7 @@ export default function ListarPedidosScreen() {
           <Text style={styles.emptyStateText}>
             {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
-          <TouchableOpacity
-            style={styles.buttonCreate}
-            onPress={() => router.push('/crear-pedido')}>
+          <TouchableOpacity style={styles.buttonCreate} onPress={() => router.push('/crear-pedido')}>
             <Text style={styles.buttonText}>+ Crear Pedido</Text>
           </TouchableOpacity>
         </View>
@@ -80,105 +80,31 @@ export default function ListarPedidosScreen() {
 }
 
 const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D',
-  2: '#42A5F5',
-  3: '#FF7043',
-  4: '#EF5350',
-  5: '#AB47BC',
-  6: '#66BB6A',
+  1: '#FFB74D', 2: '#42A5F5', 3: '#FF7043',
+  4: '#EF5350', 5: '#AB47BC', 6: '#66BB6A',
 };
 
 function getBadgeColor(estado: number) {
   return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 15,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#999',
-    marginBottom: 20,
-  },
-  pedidoCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#EEE',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  clientName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
-  description: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 10,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  monto: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  date: {
-    fontSize: 12,
-    color: '#999',
-  },
-  error: {
-    color: 'red',
-    padding: 10,
-    backgroundColor: '#FFE0E0',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  buttonCreate: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+function createStyles(C: typeof Colors.light) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 15 },
+    emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    emptyStateText: { fontSize: 16, color: C.icon, marginBottom: 20 },
+    pedidoCard: { backgroundColor: C.card, borderRadius: 8, padding: 15, marginBottom: 12, borderWidth: 1, borderColor: C.border },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+    cardTitle: { fontSize: 16, fontWeight: 'bold', color: C.text },
+    badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+    badgeText: { color: 'white', fontSize: 12, fontWeight: '600' },
+    clientName: { fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 5 },
+    description: { fontSize: 13, color: C.icon, marginBottom: 10 },
+    cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border },
+    monto: { fontSize: 16, fontWeight: 'bold', color: C.tint },
+    date: { fontSize: 12, color: C.icon },
+    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
+    buttonCreate: { backgroundColor: C.tint, paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8 },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  });
+}

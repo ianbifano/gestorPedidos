@@ -1,5 +1,7 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { ESTADOS_PEDIDO } from '@/types/pedido';
@@ -21,6 +23,9 @@ export default function ClienteDetalleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+  const styles = useMemo(() => createStyles(C), [C]);
 
   const cliente = id ? clientes.find((c) => c.id === id) : null;
   const clientePedidos = useMemo(() => {
@@ -70,12 +75,10 @@ export default function ClienteDetalleScreen() {
   return (
     <ScrollView style={styles.scrollContainer}>
       <ThemedView style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>{cliente.nombre}</Text>
         </View>
 
-        {/* Información */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Información</Text>
           <View style={styles.card}>
@@ -98,7 +101,6 @@ export default function ClienteDetalleScreen() {
           </View>
         </View>
 
-        {/* Estadísticas */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📊 Estadísticas</Text>
           <View style={styles.statsCard}>
@@ -121,7 +123,6 @@ export default function ClienteDetalleScreen() {
           </View>
         </View>
 
-        {/* Pedidos */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>📋 Pedidos</Text>
           {clientePedidos.length === 0 ? (
@@ -154,7 +155,6 @@ export default function ClienteDetalleScreen() {
           )}
         </View>
 
-        {/* Acciones */}
         <View style={styles.section}>
           <View style={styles.actionButtons}>
             <TouchableOpacity
@@ -175,196 +175,49 @@ export default function ClienteDetalleScreen() {
 }
 
 const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D',
-  2: '#42A5F5',
-  3: '#FF7043',
-  4: '#EF5350',
-  5: '#AB47BC',
-  6: '#66BB6A',
+  1: '#FFB74D', 2: '#42A5F5', 3: '#FF7043',
+  4: '#EF5350', 5: '#AB47BC', 6: '#66BB6A',
 };
 
 function getBadgeColor(estado: number) {
   return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
-const styles = StyleSheet.create({
-  scrollContainer: {
-    flex: 1,
-  },
-  container: {
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  section: {
-    marginBottom: 25,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#333',
-  },
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    overflow: 'hidden',
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  borderTop: {
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  statsCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EEE',
-    overflow: 'hidden',
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  statLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  pedidosList: {
-    gap: 10,
-  },
-  pedidoItem: {
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#EEE',
-  },
-  pedidoHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  pedidoId: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  miniBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  miniBadgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  pedidoFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  pedidoMonto: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  pedidoDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    paddingVertical: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editButton: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 1,
-    borderColor: '#007AFF',
-  },
-  deleteButton: {
-    backgroundColor: '#FFEBEE',
-    borderWidth: 1,
-    borderColor: '#F44336',
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  deleteButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F44336',
-  },
-  notFound: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+function createStyles(C: typeof Colors.light) {
+  return StyleSheet.create({
+    scrollContainer: { flex: 1 },
+    container: { padding: 20 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 30 },
+    title: { fontSize: 24, fontWeight: 'bold', color: C.text },
+    section: { marginBottom: 25 },
+    sectionTitle: { fontSize: 14, fontWeight: '600', marginBottom: 10, color: C.text },
+    card: { backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+    infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+    borderTop: { borderTopWidth: 1, borderTopColor: C.border },
+    infoLabel: { fontSize: 14, fontWeight: '500', color: C.icon },
+    infoValue: { fontSize: 14, fontWeight: '600', color: C.text },
+    statsCard: { backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
+    statRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+    statLabel: { fontSize: 14, color: C.icon },
+    statValue: { fontSize: 16, fontWeight: 'bold', color: C.tint },
+    pedidosList: { gap: 10 },
+    pedidoItem: { backgroundColor: C.card, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: C.border },
+    pedidoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+    pedidoId: { fontSize: 14, fontWeight: 'bold', color: C.text },
+    miniBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    miniBadgeText: { color: 'white', fontSize: 10, fontWeight: '600' },
+    pedidoFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
+    pedidoMonto: { fontSize: 14, fontWeight: 'bold', color: C.tint },
+    pedidoDate: { fontSize: 12, color: C.icon },
+    emptyText: { fontSize: 14, color: C.icon, textAlign: 'center', paddingVertical: 20 },
+    actionButtons: { flexDirection: 'row', gap: 10 },
+    actionButton: { flex: 1, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    editButton: { backgroundColor: C.lightGray, borderWidth: 1, borderColor: C.tint },
+    deleteButton: { backgroundColor: C.lightGray, borderWidth: 1, borderColor: '#F44336' },
+    actionButtonText: { fontSize: 14, fontWeight: '600', color: C.tint },
+    deleteButtonText: { fontSize: 14, fontWeight: '600', color: '#F44336' },
+    notFound: { fontSize: 16, color: C.icon, textAlign: 'center', marginBottom: 20 },
+    button: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+  });
+}
