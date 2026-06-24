@@ -3,6 +3,9 @@ import { supabase } from '@/constants/supabase';
 import { CreatePedidoInput, Pedido, UpdatePedidoInput } from '@/types/pedido';
 import { useCallback, useEffect, useState } from 'react';
 
+const getMsg = (err: unknown, fallback: string): string =>
+  err instanceof Error ? err.message : (err as any)?.message ?? fallback;
+
 export function usePedidos() {
   const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -20,7 +23,6 @@ export function usePedidos() {
           *,
           cliente:cliente_id (nombre, telefono)
         `)
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (estado !== undefined) {
@@ -32,7 +34,7 @@ export function usePedidos() {
       if (err) throw err;
       setPedidos(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getMsg(err, 'Error al cargar pedidos'));
     } finally {
       setLoading(false);
     }
@@ -63,7 +65,7 @@ export function usePedidos() {
       setPedidos((currentPedidos) => [data, ...currentPedidos]);
       return data;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al crear pedido';
+      const msg = getMsg(err, 'Error al crear pedido');
       setError(msg);
       throw err;
     }
@@ -94,7 +96,7 @@ export function usePedidos() {
       setPedidos(pedidos.map((p) => (p.id === id ? data : p)));
       return data;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar pedido';
+      const msg = getMsg(err, 'Error al actualizar pedido');
       setError(msg);
       throw err;
     }
@@ -111,13 +113,12 @@ export function usePedidos() {
       const { error: err } = await supabase
         .from('pedidos')
         .delete()
-        .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('id', id);
 
       if (err) throw err;
       setPedidos((currentPedidos) => currentPedidos.filter((p) => p.id !== id));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al eliminar pedido';
+      const msg = getMsg(err, 'Error al eliminar pedido');
       setError(msg);
       throw err;
     }

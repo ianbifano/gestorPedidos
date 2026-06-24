@@ -2,6 +2,7 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { EstadosProvider } from '@/contexts/EstadosContext';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -25,6 +26,10 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (user && inAuthScreen) {
     return <Redirect href="/(tabs)" />;
+  }
+
+  if (user) {
+    return <EstadosProvider>{children}</EstadosProvider>;
   }
 
   return <>{children}</>;

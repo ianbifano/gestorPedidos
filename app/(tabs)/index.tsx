@@ -2,7 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { ESTADOS_PEDIDO } from '@/types/pedido';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -30,7 +30,7 @@ export default function DashboardScreen() {
 
   const ultimosPedidos = pedidos.slice(0, 3);
 
-  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
+  const { estados, getEstadoNombre } = useEstados();
 
   return (
     <ScrollView style={styles.scrollContainer}>
@@ -38,7 +38,7 @@ export default function DashboardScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
 
         <View style={styles.cardContainer}>
-          {ESTADOS_PEDIDO.map((est) => {
+          {estados.map((est) => {
             const count = pedidos.filter((p) => p.estado === est.id).length;
             return (
               <TouchableOpacity

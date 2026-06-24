@@ -3,7 +3,7 @@ import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { ESTADOS_PEDIDO } from '@/types/pedido';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
@@ -27,8 +27,9 @@ export default function PedidoDetalleScreen() {
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
 
+  const { estados, getEstadoNombre } = useEstados();
   const pedido = id ? pedidos.find((p) => p.id === id) : null;
-  const estadoNombre = ESTADOS_PEDIDO.find((e) => e.id === pedido?.estado)?.nombre || 'Desconocido';
+  const estadoNombre = pedido ? getEstadoNombre(pedido.estado) : 'Desconocido';
 
   if (!id || pedidosLoading) {
     return (
@@ -52,7 +53,7 @@ export default function PedidoDetalleScreen() {
   const handleEstadoChange = async (nuevoEstadoId: number) => {
     try {
       setLoadingUpdate(true);
-      const nuevoNombre = ESTADOS_PEDIDO.find((e) => e.id === nuevoEstadoId)?.nombre || 'Desconocido';
+      const nuevoNombre = getEstadoNombre(nuevoEstadoId);
       await updatePedido(pedido.id, { estado: nuevoEstadoId });
       showToast(`✓ Actualizado a ${nuevoNombre}`, 'success');
     } catch (err) {
@@ -120,7 +121,7 @@ export default function PedidoDetalleScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cambiar Estado</Text>
           <View style={styles.estadoContainer}>
-            {ESTADOS_PEDIDO.map((est) => (
+            {estados.map((est) => (
               <TouchableOpacity
                 key={est.id}
                 style={[
