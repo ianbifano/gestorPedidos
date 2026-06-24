@@ -3,7 +3,7 @@
 
 import { ThemedView } from '@/components/themed-view';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { EstadoPedido } from '@/types/pedido';
+import { ESTADOS_PEDIDO } from '@/types/pedido';
 import { useRouter, useSearchParams } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,14 +12,16 @@ export default function ListarPedidosScreen() {
   const { pedidos, loading, error } = usePedidos();
   const router = useRouter();
   const params = useSearchParams();
-  const estado = params.estado as EstadoPedido | undefined;
+  const estado = params.estado ? parseInt(params.estado as string) : undefined;
 
   const filteredPedidos = useMemo(() => {
-    if (estado) {
+    if (estado !== undefined) {
       return pedidos.filter((p) => p.estado === estado);
     }
     return pedidos;
   }, [pedidos, estado]);
+
+  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
 
   if (loading) {
     return (
@@ -36,11 +38,11 @@ export default function ListarPedidosScreen() {
       {filteredPedidos.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
-            {estado ? `No hay pedidos ${estado.toLowerCase()}` : 'No hay pedidos'}
+            {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
           <TouchableOpacity
             style={styles.buttonCreate}
-            onPress={() => router.push('/pedidos/crear')}>
+            onPress={() => router.push('/crear-pedido')}>
             <Text style={styles.buttonText}>+ Crear Pedido</Text>
           </TouchableOpacity>
         </View>
@@ -51,11 +53,11 @@ export default function ListarPedidosScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.pedidoCard}
-              onPress={() => router.push(`/pedidos/${item.id}`)}>
+              onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>Pedido #{item.id}</Text>
                 <View style={[styles.badge, getBadgeColor(item.estado)]}>
-                  <Text style={styles.badgeText}>{item.estado}</Text>
+                  <Text style={styles.badgeText}>{getEstadoNombre(item.estado)}</Text>
                 </View>
               </View>
               <Text style={styles.clientName}>{item.cliente?.nombre || 'Cliente'}</Text>
@@ -77,17 +79,17 @@ export default function ListarPedidosScreen() {
   );
 }
 
-function getBadgeColor(estado: EstadoPedido) {
-  switch (estado) {
-    case 'Pendiente':
-      return { backgroundColor: '#FFB74D' };
-    case 'En proceso':
-      return { backgroundColor: '#42A5F5' };
-    case 'Entregado':
-      return { backgroundColor: '#66BB6A' };
-    default:
-      return { backgroundColor: '#999' };
-  }
+const BADGE_COLORS: Record<number, string> = {
+  1: '#FFB74D',
+  2: '#42A5F5',
+  3: '#FF7043',
+  4: '#EF5350',
+  5: '#AB47BC',
+  6: '#66BB6A',
+};
+
+function getBadgeColor(estado: number) {
+  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
 const styles = StyleSheet.create({

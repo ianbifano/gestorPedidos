@@ -1,7 +1,8 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import React from 'react';
 import { View } from 'react-native';
 
+import { CartBadge } from '@/components/CartBadge';
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
@@ -9,7 +10,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const router = useRouter();
 
   return (
     <View style={{ flex: 1 }}>
@@ -34,11 +34,34 @@ export default function TabLayout() {
           }}
         />
         <Tabs.Screen
+          name="catalogo"
+          options={{
+            title: 'Catálogo',
+            headerTitle: 'Catálogo de Productos',
+            headerLargeTitle: true,
+            tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="shopping-bag" color={color} />,
+          }}
+        />
+        <Tabs.Screen
           name="explore"
           options={{
             title: 'Pedidos',
             headerTitle: 'Mis Pedidos',
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="ant" name="dropbox" color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="carrito"
+          options={{
+            title: 'Carrito',
+            headerTitle: 'Mi Carrito',
+            headerLargeTitle: true,
+            tabBarIcon: ({ color }) => (
+              <View>
+                <IconSymbol size={28} pack="material" name="shopping-cart" color={color} />
+                <CartBadge />
+              </View>
+            ),
           }}
         />
         <Tabs.Screen

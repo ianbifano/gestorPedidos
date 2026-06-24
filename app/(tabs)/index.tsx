@@ -1,10 +1,9 @@
 import { ThemedView } from '@/components/themed-view';
 import { usePedidos } from '@/hooks/use-pedidos';
+import { ESTADOS_PEDIDO } from '@/types/pedido';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const ESTADOS = ['Pendiente', 'En proceso', 'Entregado'] as const;
 
 export default function DashboardScreen() {
   const { pedidos, loading, error, fetchPedidos } = usePedidos();
@@ -26,21 +25,23 @@ export default function DashboardScreen() {
 
   const ultimosPedidos = pedidos.slice(0, 3);
 
+  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
+
   return (
     <ScrollView style={styles.scrollContainer}>
       <ThemedView style={styles.container}>
         {error && <Text style={styles.error}>{error}</Text>}
 
         <View style={styles.cardContainer}>
-          {ESTADOS.map((estado) => {
-            const count = pedidos.filter((p) => p.estado === estado).length;
+          {ESTADOS_PEDIDO.map((est) => {
+            const count = pedidos.filter((p) => p.estado === est.id).length;
             return (
               <TouchableOpacity
-                key={estado}
-                style={[styles.card, getCardColor(estado)]}
-                onPress={() => router.push(`/(tabs)/explore?estado=${estado}`)}>
+                key={est.id}
+                style={[styles.card, getCardColor(est.id)]}
+                onPress={() => router.push(`/(tabs)/explore?estado=${est.id}`)}>
                 <Text style={styles.cardNumber}>{count}</Text>
-                <Text style={styles.cardLabel}>{estado}</Text>
+                <Text style={styles.cardLabel}>{est.nombre}</Text>
               </TouchableOpacity>
             );
           })}
@@ -48,7 +49,7 @@ export default function DashboardScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>📋 Últimos Pedidos</Text>
+            <Text style={styles.sectionTitle}>Últimos Pedidos</Text>
             <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
               <Text style={styles.seeAll}>Ver todos →</Text>
             </TouchableOpacity>
@@ -66,7 +67,7 @@ export default function DashboardScreen() {
                   <View style={styles.pedidoHeader}>
                     <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
                     <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
-                      <Text style={styles.miniBadgeText}>{pedido.estado}</Text>
+                      <Text style={styles.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
                     </View>
                   </View>
                   <Text style={styles.pedidoCliente}>{pedido.cliente?.nombre}</Text>
@@ -88,17 +89,17 @@ export default function DashboardScreen() {
         <TouchableOpacity
           style={styles.buttonPrimary}
           onPress={() => router.push('/crear-pedido')}>
-          <Text style={styles.buttonText}>➕ Crear Pedido</Text>
+          <Text style={styles.buttonText}>+ Crear Pedido</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.buttonSecondary}
           onPress={() => router.push('/crear-cliente')}>
-          <Text style={styles.buttonTextSecondary}>➕ Nuevo Cliente</Text>
+          <Text style={styles.buttonTextSecondary}>+ Nuevo Cliente</Text>
         </TouchableOpacity>
 
         <View style={styles.stats}>
-          <Text style={styles.statsTitle}>📊 Estadísticas</Text>
+          <Text style={styles.statsTitle}>Estadísticas</Text>
           <Text style={styles.statsSubtitle}>
             Total de pedidos: <Text style={styles.statValue}>{pedidos.length}</Text>
           </Text>
@@ -114,7 +115,7 @@ export default function DashboardScreen() {
           <Text style={styles.statsSubtitle}>
             Tasa entrega: <Text style={styles.statValue}>
               {pedidos.length > 0 
-                ? Math.round((pedidos.filter((p) => p.estado === 'Entregado').length / pedidos.length) * 100)
+                ? Math.round((pedidos.filter((p) => p.estado === 6).length / pedidos.length) * 100)
                 : 0}%
             </Text>
           </Text>
@@ -124,29 +125,37 @@ export default function DashboardScreen() {
   );
 }
 
-function getCardColor(estado: string) {
-  switch (estado) {
-    case 'Pendiente': return { backgroundColor: '#FFF3E0' };
-    case 'En proceso': return { backgroundColor: '#E3F2FD' };
-    case 'Entregado': return { backgroundColor: '#E8F5E9' };
-    default: return {};
-  }
+const CARD_COLORS: Record<number, string> = {
+  1: '#FFF3E0',
+  2: '#E3F2FD',
+  3: '#FBE9E7',
+  4: '#FFEBEE',
+  5: '#F3E5F5',
+  6: '#E8F5E9',
+};
+
+const BADGE_COLORS: Record<number, string> = {
+  1: '#FFB74D',
+  2: '#42A5F5',
+  3: '#FF7043',
+  4: '#EF5350',
+  5: '#AB47BC',
+  6: '#66BB6A',
+};
+
+function getCardColor(estado: number) {
+  return { backgroundColor: CARD_COLORS[estado] || '#FFF' };
 }
 
-function getBadgeColor(estado: string) {
-  switch (estado) {
-    case 'Pendiente': return { backgroundColor: '#FFB74D' };
-    case 'En proceso': return { backgroundColor: '#42A5F5' };
-    case 'Entregado': return { backgroundColor: '#66BB6A' };
-    default: return { backgroundColor: '#999' };
-  }
+function getBadgeColor(estado: number) {
+  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
 }
 
 const styles = StyleSheet.create({
   scrollContainer: { flex: 1 },
   container: { padding: 20 },
-  cardContainer: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 20, gap: 10 },
-  card: { flex: 1, paddingVertical: 20, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  cardContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 20, gap: 10 },
+  card: { width: '30%', paddingVertical: 20, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   cardNumber: { fontSize: 28, fontWeight: 'bold', marginBottom: 5 },
   cardLabel: { fontSize: 12, fontWeight: '500' },
   section: { marginVertical: 20 },
