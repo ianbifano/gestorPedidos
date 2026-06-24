@@ -1,12 +1,3 @@
-export const ESTADOS_PEDIDO = [
-  { id: 1, nombre: 'Pendiente' },
-  { id: 2, nombre: 'En Preparacion' },
-  { id: 3, nombre: 'Demorado' },
-  { id: 4, nombre: 'Cancelado' },
-  { id: 5, nombre: 'En Camino' },
-  { id: 6, nombre: 'Entregado' },
-] as const;
-
 export interface Pedido {
   id: number;
   user_id: string;

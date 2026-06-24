@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Product } from '@/types/product';
+import { Producto } from '@/types/producto';
 import React from 'react';
 import {
     Image,
@@ -12,13 +12,16 @@ import {
 import { IconSymbol } from './ui/icon-symbol';
 
 interface ProductCardProps {
-  product: Product;
-  onAddToCart: (product: Product) => void;
+  product: Producto;
+  onAddToCart?: (product: Producto) => void;
+  onEdit?: (product: Producto) => void;
+  onDelete?: (product: Producto) => void;
 }
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({ product, onAddToCart, onEdit, onDelete }: ProductCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const isOwnerMode = !!(onEdit && onDelete);
 
   const styles = StyleSheet.create({
     container: {
@@ -61,13 +64,6 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       padding: 12,
       flex: 1,
     },
-    categoria: {
-      fontSize: 11,
-      color: colors.accent,
-      fontWeight: '600',
-      marginBottom: 4,
-      textTransform: 'uppercase',
-    },
     nombre: {
       fontSize: 14,
       fontWeight: '700',
@@ -79,7 +75,6 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       color: colors.icon,
       lineHeight: 16,
       marginBottom: 10,
-      numberOfLines: 2,
     },
     footer: {
       flexDirection: 'row',
@@ -94,6 +89,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       fontWeight: '700',
       color: colors.tint,
     },
+    ownerActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
     button: {
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -101,6 +100,9 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
       backgroundColor: colors.tint,
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    deleteButton: {
+      backgroundColor: '#EF5350',
     },
     buttonText: {
       color: '#FFFFFF',
@@ -116,37 +118,42 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           <Image source={{ uri: product.imagen }} style={styles.image} />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <IconSymbol
-              size={32}
-              pack="material"
-              name="restaurant"
-              color={colors.tint}
-            />
+            <IconSymbol size={32} pack="material" name="restaurant" color={colors.tint} />
           </View>
         )}
       </View>
 
       <View style={styles.content}>
-        {product.categoria && (
-          <Text style={styles.categoria}>{product.categoria}</Text>
-        )}
-        <Text style={styles.nombre} numberOfLines={2}>
-          {product.nombre}
-        </Text>
-        <Text style={styles.descripcion}>{product.descripcion}</Text>
+        <Text style={styles.nombre} numberOfLines={2}>{product.nombre}</Text>
+        {product.descripcion ? (
+          <Text style={styles.descripcion} numberOfLines={2}>{product.descripcion}</Text>
+        ) : null}
 
         <View style={styles.footer}>
           <Text style={styles.precio}>
             ${product.precio.toLocaleString('es-AR')}
           </Text>
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={() => onAddToCart(product)}>
-            <Text style={styles.buttonText}>Agregar</Text>
-          </Pressable>
+
+          {isOwnerMode ? (
+            <View style={styles.ownerActions}>
+              <Pressable
+                style={({ pressed }) => [styles.button, pressed && { opacity: 0.8 }]}
+                onPress={() => onEdit!(product)}>
+                <Text style={styles.buttonText}>Editar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.button, styles.deleteButton, pressed && { opacity: 0.8 }]}
+                onPress={() => onDelete!(product)}>
+                <Text style={styles.buttonText}>Eliminar</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={({ pressed }) => [styles.button, pressed && { opacity: 0.8 }]}
+              onPress={() => onAddToCart?.(product)}>
+              <Text style={styles.buttonText}>Agregar</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>

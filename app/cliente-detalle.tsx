@@ -4,7 +4,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { ESTADOS_PEDIDO } from '@/types/pedido';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import {
@@ -70,7 +70,7 @@ export default function ClienteDetalleScreen() {
     );
   };
 
-  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
+  const { getEstadoNombre } = useEstados();
 
   return (
     <ScrollView style={styles.scrollContainer}>

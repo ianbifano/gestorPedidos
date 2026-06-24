@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/theme';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { ESTADOS_PEDIDO, Pedido } from '@/types/pedido';
+import { Pedido } from '@/types/pedido';
 import React, { useMemo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -13,7 +14,8 @@ function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
-  const estadoNombre = ESTADOS_PEDIDO.find((e) => e.id === pedido.estado)?.nombre || 'Desconocido';
+  const { getEstadoNombre } = useEstados();
+  const estadoNombre = getEstadoNombre(pedido.estado);
 
   return (
     <TouchableOpacity style={styles.pedidoItem} onPress={onPress} activeOpacity={0.7}>

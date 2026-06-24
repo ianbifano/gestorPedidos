@@ -2,7 +2,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { ESTADOS_PEDIDO } from '@/types/pedido';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -23,7 +23,7 @@ export default function ListarPedidosScreen() {
     return pedidos;
   }, [pedidos, estado]);
 
-  const getEstadoNombre = (id: number) => ESTADOS_PEDIDO.find((e) => e.id === id)?.nombre || 'Desconocido';
+  const { getEstadoNombre } = useEstados();
 
   if (loading) {
     return (

@@ -1,13 +1,17 @@
 import { ProductCard } from '@/components/ProductCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProductos } from '@/hooks/use-productos';
+import { Producto } from '@/types/producto';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
+    Alert,
     FlatList,
     Pressable,
     SafeAreaView,
@@ -15,21 +19,22 @@ import {
     Text,
     View
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 
 export default function CatalogScreen() {
   const router = useRouter();
+  const { role } = useAuth();
   const { addItem, getSummary } = useCart();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { productos, loading, refresh } = useProductos();
+  const { productos, loading, fetchProductos, deleteProducto } = useProductos();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
+  const isOwner = role === 'dueno';
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
-    }, [refresh])
+      fetchProductos();
+    }, [fetchProductos])
   );
 
   const summary = getSummary();
@@ -71,6 +76,18 @@ export default function CatalogScreen() {
       fontSize: 16,
       color: colors.icon,
       marginTop: 12,
+    },
+    addFirstButton: {
+      marginTop: 16,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      backgroundColor: colors.tint,
+      borderRadius: 8,
+    },
+    addFirstButtonText: {
+      color: '#FFFFFF',
+      fontWeight: '600',
+      fontSize: 15,
     },
     loadingContainer: {
       flex: 1,
@@ -150,14 +167,32 @@ export default function CatalogScreen() {
     },
   });
 
-  const handleAddToCart = (product: any) => {
-    addItem(product);
+  const handleAddToCart = (product: Producto) => {
+    addItem(product as any);
     setAddedProduct(product.nombre);
     setShowAddedToast(true);
+    setTimeout(() => setShowAddedToast(false), 2000);
+  };
 
-    setTimeout(() => {
-      setShowAddedToast(false);
-    }, 2000);
+  const handleEdit = (product: Producto) => {
+    router.push(
+      `/editar-producto?id=${product.id}&nombre=${encodeURIComponent(product.nombre)}&descripcion=${encodeURIComponent(product.descripcion ?? '')}&precio=${product.precio}` as any
+    );
+  };
+
+  const handleDelete = (product: Producto) => {
+    Alert.alert(
+      'Eliminar producto',
+      `¿Seguro que querés eliminar "${product.nombre}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteProducto(product.id),
+        },
+      ]
+    );
   };
 
   if (loading) {
@@ -166,7 +201,7 @@ export default function CatalogScreen() {
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Catálogo de Productos</Text>
           <Text style={styles.headerSubtitle}>
-            Selecciona los productos que deseas
+            {isOwner ? 'Administrá tu catálogo de productos' : 'Selecciona los productos que deseas'}
           </Text>
         </View>
         <View style={styles.loadingContainer}>
@@ -181,52 +216,44 @@ export default function CatalogScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Catálogo de Productos</Text>
         <Text style={styles.headerSubtitle}>
-          Selecciona los productos que deseas
+          {isOwner ? 'Administrá tu catálogo de productos' : 'Selecciona los productos que deseas'}
         </Text>
       </View>
 
       {productos.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <IconSymbol
-            size={64}
-            pack="material"
-            name="shopping-bag"
-            color={colors.icon}
-          />
-          <Text style={styles.emptyText}>
-            No hay productos disponibles
-          </Text>
+          <IconSymbol size={64} pack="material" name="shopping-bag" color={colors.icon} />
+          <Text style={styles.emptyText}>No hay productos disponibles</Text>
+          {isOwner && (
+            <Pressable style={styles.addFirstButton} onPress={() => router.push('/crear-producto' as any)}>
+              <Text style={styles.addFirstButtonText}>+ Agregar primer producto</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <FlatList
           data={productos}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           numColumns={1}
           contentContainerStyle={styles.contentContainer}
-          renderItem={({ item }) => (
-            <ProductCard
-              product={item}
-              onAddToCart={handleAddToCart}
-            />
-          )}
+          renderItem={({ item }) =>
+            isOwner ? (
+              <ProductCard product={item} onEdit={handleEdit} onDelete={handleDelete} />
+            ) : (
+              <ProductCard product={item} onAddToCart={handleAddToCart} />
+            )
+          }
         />
       )}
 
-      {showAddedToast && (
+      {!isOwner && showAddedToast && (
         <View style={styles.toastContainer}>
-          <IconSymbol
-            size={20}
-            pack="material"
-            name="check-circle"
-            color="#FFFFFF"
-          />
-          <Text style={styles.toastText}>
-            {addedProduct} agregado al carrito
-          </Text>
+          <IconSymbol size={20} pack="material" name="check-circle" color="#FFFFFF" />
+          <Text style={styles.toastText}>{addedProduct} agregado al carrito</Text>
         </View>
       )}
 
-      {summary.totalItems > 0 && (
+      {!isOwner && summary.totalItems > 0 && (
         <Pressable
           style={styles.floatingCartContainer}
           onPress={() => router.push('/(tabs)/carrito')}>
@@ -235,20 +262,21 @@ export default function CatalogScreen() {
               {summary.totalItems} producto{summary.totalItems !== 1 ? 's' : ''}
             </Text>
             <Text style={styles.cartTotal}>
-              ${summary.total.toLocaleString('es-AR', {
-                minimumFractionDigits: 2,
-              })}
+              ${summary.total.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
           <View style={styles.cartButton}>
             <Text style={styles.cartButtonText}>Ver</Text>
-            <IconSymbol
-              size={18}
-              pack="material"
-              name="arrow-forward"
-              color="#FFFFFF"
-            />
+            <IconSymbol size={18} pack="material" name="arrow-forward" color="#FFFFFF" />
           </View>
+        </Pressable>
+      )}
+
+      {isOwner && (
+        <Pressable
+          style={styles.floatingCartContainer}
+          onPress={() => router.push('/crear-producto' as any)}>
+          <Text style={[styles.cartTotal, { flex: 1, textAlign: 'center' }]}>+ Agregar Producto</Text>
         </Pressable>
       )}
     </SafeAreaView>

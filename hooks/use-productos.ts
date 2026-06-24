@@ -1,7 +1,7 @@
 import { supabase } from '@/constants/supabase';
 import { uploadProductoImagen } from '@/src/services/uploadProductoImagen';
 import { Producto } from '@/types/producto';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 export function useProductos() {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -11,7 +11,7 @@ export function useProductos() {
   // -------------------------
   // FETCH
   // -------------------------
-  const fetchProductos = async () => {
+  const fetchProductos = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -28,7 +28,7 @@ export function useProductos() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // -------------------------
   // CREATE (con imagen)
@@ -143,7 +143,7 @@ export function useProductos() {
   // -------------------------
   useEffect(() => {
     fetchProductos();
-  }, []);
+  }, [fetchProductos]);
 
   return {
     productos,
