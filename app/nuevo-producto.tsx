@@ -1,18 +1,18 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { useProductos } from '@/hooks/use-productos';
+import { uploadProductoImagen } from '@/src/services/uploadProductoImagen';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity
 } from 'react-native';
-
-import { uploadProductoImagen } from '@/src/services/uploadProductoImagen';
 
 export default function NuevoProductoScreen() {
   const [nombre, setNombre] = useState('');
@@ -179,3 +179,94 @@ export default function NuevoProductoScreen() {
     </ThemedView>
   );
 }
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'center',
+  },
+
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: '#DDD',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 20,
+    fontSize: 14,
+  },
+
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+
+  imageButton: {
+    backgroundColor: '#E5E5E5',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+
+  imageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  preview: {
+    width: 180,
+    height: 180,
+    alignSelf: 'center',
+    borderRadius: 10,
+    marginBottom: 20,
+  },
+
+  button: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  buttonCancel: {
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+
+  buttonCancelText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
+  error: {
+    color: 'red',
+    padding: 10,
+    backgroundColor: '#FFE0E0',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+});
