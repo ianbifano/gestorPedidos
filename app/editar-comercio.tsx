@@ -1,0 +1,89 @@
+import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
+import { Validators } from '@/hooks/validators';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
+
+export default function EditarComercioScreen() {
+  const { updateComercio } = useComercios();
+  const { show: showToast } = useToast();
+  const router = useRouter();
+  const params = useLocalSearchParams();
+  const id = params.id ? parseInt(params.id as string) : null;
+  const [nombre, setNombre] = useState((params.nombre as string) ?? '');
+  const [loading, setLoading] = useState(false);
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+  const styles = useMemo(() => createStyles(C), [C]);
+
+  if (!id) {
+    return (
+      <ThemedView style={styles.container}>
+        <Text style={styles.notFound}>Comercio no encontrado</Text>
+        <TouchableOpacity style={styles.button} onPress={() => router.back()}>
+          <Text style={styles.buttonText}>Volver</Text>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+
+  const handleSave = async () => {
+    const validNombre = Validators.nombre(nombre);
+    if (!validNombre.valid) {
+      showToast(validNombre.error || 'Error', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await updateComercio(id, nombre.trim());
+      showToast('✓ Comercio actualizado correctamente', 'success');
+      router.back();
+    } catch (err) {
+      const mensajeError = err instanceof Error ? err.message : 'No se pudo actualizar el comercio';
+      showToast(mensajeError, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ThemedView style={styles.container}>
+      <Text style={styles.label}>Nombre del comercio *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="Ingrese nombre"
+        placeholderTextColor={C.icon}
+        value={nombre}
+        onChangeText={setNombre}
+        editable={!loading}
+      />
+
+      <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSave} disabled={loading}>
+        {loading ? <ActivityIndicator color="white" /> : <Text style={styles.buttonText}>Guardar Cambios</Text>}
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.buttonCancel} onPress={() => router.back()} disabled={loading}>
+        <Text style={styles.buttonCancelText}>Cancelar</Text>
+      </TouchableOpacity>
+    </ThemedView>
+  );
+}
+
+function createStyles(C: typeof Colors.light) {
+  return StyleSheet.create({
+    container: { flex: 1, padding: 20, justifyContent: 'center' },
+    label: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: C.text },
+    input: { borderWidth: 1, borderColor: C.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 20, fontSize: 14, color: C.text, backgroundColor: C.card },
+    button: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 20 },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
+    buttonCancel: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: C.border },
+    buttonCancelText: { color: C.tint, fontSize: 16, fontWeight: '600' },
+    notFound: { fontSize: 16, color: C.icon, textAlign: 'center' },
+  });
+}

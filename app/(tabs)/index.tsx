@@ -103,6 +103,12 @@ export default function DashboardScreen() {
           <Text style={styles.buttonTextSecondary}>+ Nuevo Cliente</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity
+          style={styles.buttonSecondary}
+          onPress={() => router.push('/comercios')}>
+          <Text style={styles.buttonTextSecondary}>Mis Comercios</Text>
+        </TouchableOpacity>
+
         <View style={styles.stats}>
           <Text style={styles.statsTitle}>Estadísticas</Text>
           <Text style={styles.statsSubtitle}>
