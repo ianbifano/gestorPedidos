@@ -11,12 +11,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { signOut } = useAuth();
+  const { role, signOut } = useAuth();
   const C = Colors[colorScheme ?? 'light'];
+  const isVendedor = role === 'vendedor';
 
   return (
     <View style={{ flex: 1 }}>
       <Tabs
+        initialRouteName={isVendedor ? 'index' : 'catalogo'}
         screenOptions={{
           tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
           headerShown: true,
@@ -26,6 +28,11 @@ export default function TabLayout() {
             paddingBottom: 8,
             paddingTop: 8,
           },
+          headerRight: () => (
+            <TouchableOpacity onPress={() => signOut()} style={{ marginRight: 16 }}>
+              <Text style={{ color: C.tint, fontSize: 15, fontWeight: '600' }}>Salir</Text>
+            </TouchableOpacity>
+          ),
         }}>
         <Tabs.Screen
           name="index"
@@ -33,12 +40,8 @@ export default function TabLayout() {
             title: 'Home',
             headerTitle: 'Gestor de Pedidos',
             headerLargeTitle: true,
+            href: isVendedor ? undefined : null,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="house" color={color} />,
-            headerRight: () => (
-              <TouchableOpacity onPress={() => signOut()} style={{ marginRight: 16 }}>
-                <Text style={{ color: C.tint, fontSize: 15, fontWeight: '600' }}>Salir</Text>
-              </TouchableOpacity>
-            ),
           }}
         />
         <Tabs.Screen
@@ -55,6 +58,7 @@ export default function TabLayout() {
           options={{
             title: 'Pedidos',
             headerTitle: 'Mis Pedidos',
+            href: isVendedor ? undefined : null,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="ant" name="dropbox" color={color} />,
           }}
         />
@@ -64,6 +68,7 @@ export default function TabLayout() {
             title: 'Carrito',
             headerTitle: 'Mi Carrito',
             headerLargeTitle: true,
+            href: isVendedor ? null : undefined,
             tabBarIcon: ({ color }) => (
               <View>
                 <IconSymbol size={28} pack="material" name="shopping-cart" color={color} />
@@ -77,11 +82,12 @@ export default function TabLayout() {
           options={{
             title: 'Clientes',
             headerTitle: 'Gestionar Clientes',
+            href: isVendedor ? undefined : null,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="fontawesome" name="users" color={color} />,
           }}
         />
       </Tabs>
-      
+
       {/* <FAB 
         onPress={() => router.push('/crear-pedido')}
         icon="dropbox"

@@ -1,6 +1,7 @@
 import { AuthMessageModal } from '@/components/AuthMessageModal';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Role } from '@/types/perfil';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -31,6 +32,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState<Role>('cliente');
   const [loading, setLoading] = useState(false);
   const [dialog, setDialog] = useState<DialogState>({
     visible: false,
@@ -76,7 +78,7 @@ export default function RegisterScreen() {
 
     try {
       setLoading(true);
-      const result = await signUp(username, normalizedEmail, password);
+      const result = await signUp(username, normalizedEmail, password, role);
 
       setDialog({
         visible: true,
@@ -150,6 +152,26 @@ export default function RegisterScreen() {
               secureTextEntry
               textContentType="newPassword"
             />
+
+            <Text style={styles.label}>Tipo de Cuenta</Text>
+            <View style={styles.roleSelector}>
+              <TouchableOpacity
+                style={[styles.roleOption, role === 'cliente' && styles.roleOptionActive]}
+                onPress={() => setRole('cliente')}
+                disabled={loading}>
+                <Text style={[styles.roleOptionText, role === 'cliente' && styles.roleOptionTextActive]}>
+                  Cliente
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.roleOption, role === 'vendedor' && styles.roleOptionActive]}
+                onPress={() => setRole('vendedor')}
+                disabled={loading}>
+                <Text style={[styles.roleOptionText, role === 'vendedor' && styles.roleOptionTextActive]}>
+                  Vendedor
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <TouchableOpacity
               style={[styles.primaryButton, loading && styles.disabledButton]}
@@ -251,6 +273,31 @@ const styles = StyleSheet.create({
     color: '#111111',
     fontSize: 18,
     marginBottom: 28,
+  },
+  roleSelector: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  roleOption: {
+    flex: 1,
+    height: 46,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roleOptionActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  roleOptionText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  roleOptionTextActive: {
+    color: '#111111',
   },
   primaryButton: {
     alignSelf: 'center',

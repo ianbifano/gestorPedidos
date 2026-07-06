@@ -29,7 +29,7 @@ export default function CatalogScreen() {
   const { productos, loading, fetchProductos, deleteProducto } = useProductos();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
-  const isOwner = role === 'dueno';
+  const isOwner = role === 'vendedor';
 
   useFocusEffect(
     useCallback(() => {
