@@ -1,6 +1,7 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { useEstados } from '@/contexts/EstadosContext';
@@ -15,9 +16,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function PedidoDetalleScreen() {
-  const { pedidos, updatePedido, loading: pedidosLoading, deletePedido } = usePedidos();
+  const { pedidos, pedidosCliente, updatePedido, loading: pedidosLoading, deletePedido } = usePedidos();
+  const { isDueno } = useAuth();
   const { show: showToast } = useToast();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -28,7 +31,8 @@ export default function PedidoDetalleScreen() {
   const styles = useMemo(() => createStyles(C), [C]);
 
   const { estados, getEstadoNombre } = useEstados();
-  const pedido = id ? pedidos.find((p) => p.id === id) : null;
+  const source = isDueno ? pedidos : pedidosCliente;
+  const pedido = id ? source.find((p) => p.id === id) : null;
   const estadoNombre = pedido ? getEstadoNombre(pedido.estado) : 'Desconocido';
 
   if (!id || pedidosLoading) {
@@ -91,6 +95,16 @@ export default function PedidoDetalleScreen() {
           </View>
         </View>
 
+        {pedido.comercio && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Comercio</Text>
+            <View style={[styles.card, styles.comercioCard]}>
+              <IconSymbol size={18} pack="material" name="store" color={C.tint} />
+              <Text style={[styles.comercioName, { color: C.tint }]}>{pedido.comercio.nombre}</Text>
+            </View>
+          </View>
+        )}
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Monto</Text>
           <View style={styles.card}>
@@ -118,69 +132,73 @@ export default function PedidoDetalleScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cambiar Estado</Text>
-          <View style={styles.estadoContainer}>
-            {estados.map((est) => (
-              <TouchableOpacity
-                key={est.id}
-                style={[
-                  styles.estadoButton,
-                  pedido.estado === est.id && styles.estadoButtonActive,
-                ]}
-                onPress={() => handleEstadoChange(est.id)}
-                disabled={loadingUpdate || pedido.estado === est.id}>
-                <Text
-                  style={[
-                    styles.estadoButtonText,
-                    pedido.estado === est.id && styles.estadoButtonTextActive,
-                  ]}>
-                  {est.nombre}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {isDueno && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Cambiar Estado</Text>
+              <View style={styles.estadoContainer}>
+                {estados.map((est) => (
+                  <TouchableOpacity
+                    key={est.id}
+                    style={[
+                      styles.estadoButton,
+                      pedido.estado === est.id && styles.estadoButtonActive,
+                    ]}
+                    onPress={() => handleEstadoChange(est.id)}
+                    disabled={loadingUpdate || pedido.estado === est.id}>
+                    <Text
+                      style={[
+                        styles.estadoButtonText,
+                        pedido.estado === est.id && styles.estadoButtonTextActive,
+                      ]}>
+                      {est.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
 
-        <View style={styles.section}>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
-              onPress={() => router.push(`/editar-pedido?id=${pedido.id}`)}>
-              <Text style={styles.actionButtonText}>✏️ Editar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.deleteButton]}
-              onPress={() => {
-                Alert.alert(
-                  'Eliminar Pedido',
-                  '¿Estás seguro de que quieres eliminar este pedido?',
-                  [
-                    { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
-                    {
-                      text: 'Eliminar',
-                      onPress: async () => {
-                        try {
-                          setLoadingUpdate(true);
-                          await deletePedido(pedido.id);
-                          showToast('✓ Pedido eliminado', 'success');
-                          router.back();
-                        } catch (err) {
-                          const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el pedido';
-                          showToast(mensaje, 'error');
-                        } finally {
-                          setLoadingUpdate(false);
-                        }
-                      },
-                      style: 'destructive',
-                    },
-                  ]
-                );
-              }}>
-              <Text style={styles.deleteButtonText}>🗑️ Eliminar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+            <View style={styles.section}>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() => router.push(`/editar-pedido?id=${pedido.id}`)}>
+                  <Text style={styles.actionButtonText}>✏️ Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.deleteButton]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Eliminar Pedido',
+                      '¿Estás seguro de que quieres eliminar este pedido?',
+                      [
+                        { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
+                        {
+                          text: 'Eliminar',
+                          onPress: async () => {
+                            try {
+                              setLoadingUpdate(true);
+                              await deletePedido(pedido.id);
+                              showToast('✓ Pedido eliminado', 'success');
+                              router.back();
+                            } catch (err) {
+                              const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el pedido';
+                              showToast(mensaje, 'error');
+                            } finally {
+                              setLoadingUpdate(false);
+                            }
+                          },
+                          style: 'destructive',
+                        },
+                      ]
+                    );
+                  }}>
+                  <Text style={styles.deleteButtonText}>🗑️ Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </>
+        )}
 
         {loadingUpdate && (
           <View style={styles.loadingOverlay}>
@@ -218,6 +236,8 @@ function createStyles(C: typeof Colors.light) {
     card: { backgroundColor: C.card, borderRadius: 8, padding: 15, borderWidth: 1, borderColor: C.border },
     clientName: { fontSize: 16, fontWeight: '600', color: C.text },
     clientPhone: { fontSize: 14, color: C.tint, marginTop: 8 },
+    comercioCard: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    comercioName: { fontSize: 15, fontWeight: '600' },
     description: { fontSize: 14, color: C.text, lineHeight: 20 },
     monto: { fontSize: 28, fontWeight: 'bold', color: C.tint },
     infoRow: { paddingVertical: 10 },

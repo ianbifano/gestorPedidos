@@ -5,17 +5,23 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useComercios } from '@/hooks/use-comercios';
 import { Comercio } from '@/types/comercio';
-import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ComerciosScreen() {
-  const { comercios, loading, error, deleteComercio } = useComercios();
+  const { comercios, loading, error, fetchComercios, deleteComercio } = useComercios();
   const { show: showToast } = useToast();
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchComercios();
+    }, [fetchComercios])
+  );
 
   const handleDelete = (comercio: Comercio) => {
     Alert.alert(
@@ -68,7 +74,7 @@ export default function ComerciosScreen() {
               comercio={item}
               onPress={() =>
                 router.push({
-                  pathname: '/editar-comercio',
+                  pathname: '/comercio-detalle',
                   params: { id: String(item.id), nombre: item.nombre },
                 })
               }

@@ -7,12 +7,15 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useComercios } from '@/hooks/use-comercios';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { signOut } = useAuth();
+  const { comercios } = useComercios();
   const C = Colors[colorScheme ?? 'light'];
+  const tieneComercios = comercios.length > 0;
 
   return (
     <View style={{ flex: 1 }}>
@@ -53,8 +56,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="explore"
           options={{
-            title: 'Pedidos',
-            headerTitle: 'Mis Pedidos',
+            title: tieneComercios ? 'Pedidos' : 'Mis Compras',
+            headerTitle: tieneComercios ? 'Mis Pedidos' : 'Mis Compras',
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="ant" name="dropbox" color={color} />,
           }}
         />
@@ -77,17 +80,11 @@ export default function TabLayout() {
           options={{
             title: 'Clientes',
             headerTitle: 'Gestionar Clientes',
+            href: tieneComercios ? undefined : null,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="fontawesome" name="users" color={color} />,
           }}
         />
       </Tabs>
-      
-      {/* <FAB 
-        onPress={() => router.push('/crear-pedido')}
-        icon="dropbox"
-        position="center"
-        pack="ant"
-      /> */}
     </View>
   );
 }

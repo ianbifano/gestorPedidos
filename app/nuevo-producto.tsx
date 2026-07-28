@@ -3,7 +3,7 @@ import { useToast } from '@/components/Toast';
 import { useProductos } from '@/hooks/use-productos';
 import { uploadProductoImagen } from '@/src/services/uploadProductoImagen';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 
 export default function NuevoProductoScreen() {
+  const params = useLocalSearchParams();
+  const comercioId = params.comercio_id ? Number(params.comercio_id) : 1;
+
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState('');
@@ -72,9 +75,9 @@ export default function NuevoProductoScreen() {
         descripcion.trim(),
         Number(precio),
         null,
-        1,
+        comercioId,
         true,
-        imagenUrl // 👈 URL ya subida
+        imagenUrl
       );
 
       showToast('✓ Producto creado correctamente', 'success');

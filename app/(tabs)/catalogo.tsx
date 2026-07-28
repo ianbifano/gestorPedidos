@@ -22,14 +22,14 @@ import {
 
 export default function CatalogScreen() {
   const router = useRouter();
-  const { role } = useAuth();
+  const { isDueno } = useAuth();
   const { addItem, getSummary } = useCart();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { productos, loading, fetchProductos, deleteProducto } = useProductos();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
-  const isOwner = role === 'dueno';
+  const isOwner = isDueno;
 
   useFocusEffect(
     useCallback(() => {
@@ -168,10 +168,14 @@ export default function CatalogScreen() {
   });
 
   const handleAddToCart = (product: Producto) => {
-    addItem(product as any);
+    addItem({ ...product, comercio_nombre: product.comercio?.nombre } as any);
     setAddedProduct(product.nombre);
     setShowAddedToast(true);
     setTimeout(() => setShowAddedToast(false), 2000);
+  };
+
+  const handlePress = (product: Producto) => {
+    router.push(`/producto-detalle?id=${product.id}` as any);
   };
 
   const handleEdit = (product: Producto) => {
@@ -238,9 +242,9 @@ export default function CatalogScreen() {
           contentContainerStyle={styles.contentContainer}
           renderItem={({ item }) =>
             isOwner ? (
-              <ProductCard product={item} onEdit={handleEdit} onDelete={handleDelete} />
+              <ProductCard product={item} onPress={handlePress} onEdit={handleEdit} onDelete={handleDelete} />
             ) : (
-              <ProductCard product={item} onAddToCart={handleAddToCart} />
+              <ProductCard product={item} onPress={handlePress} onAddToCart={handleAddToCart} />
             )
           }
         />

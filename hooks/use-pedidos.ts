@@ -9,6 +9,7 @@ const getMsg = (err: unknown, fallback: string): string =>
 export function usePedidos() {
   const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [pedidosCliente, setPedidosCliente] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +34,46 @@ export function usePedidos() {
 
       if (err) throw err;
       setPedidos(data || []);
+    } catch (err) {
+      setError(getMsg(err, 'Error al cargar pedidos'));
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchPedidosCliente = useCallback(async () => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      setError(null);
+
+      const { data: clienteData, error: clienteErr } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (clienteErr) throw clienteErr;
+
+      if (!clienteData || clienteData.length === 0) {
+        setPedidosCliente([]);
+        return;
+      }
+
+      const clienteId = clienteData[0].id;
+
+      const { data, error: err } = await supabase
+        .from('pedidos')
+        .select(`
+          *,
+          cliente:cliente_id (nombre, telefono),
+          comercio:comercio_id (nombre)
+        `)
+        .eq('cliente_id', clienteId)
+        .order('created_at', { ascending: false });
+
+      if (err) throw err;
+      setPedidosCliente(data || []);
     } catch (err) {
       setError(getMsg(err, 'Error al cargar pedidos'));
     } finally {
@@ -134,9 +175,11 @@ export function usePedidos() {
 
   return {
     pedidos,
+    pedidosCliente,
     loading,
     error,
     fetchPedidos,
+    fetchPedidosCliente,
     createPedido,
     updatePedido,
     deletePedido,

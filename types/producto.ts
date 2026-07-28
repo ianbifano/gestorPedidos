@@ -5,8 +5,9 @@ export interface Producto {
   descripcion?: string;
   precio: number;
   disponible: boolean;
+  publicado: boolean;
   categoria: number;
   comercio_id: number;
-
-  imagen?: string | null; // 👈 AGREGAR ESTO
+  imagen?: string | null;
+  comercio?: { nombre: string };
 }

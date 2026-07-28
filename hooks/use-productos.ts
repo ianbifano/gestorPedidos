@@ -18,7 +18,7 @@ export function useProductos() {
 
       const { data, error } = await supabase
         .from('productos')
-        .select('*');
+        .select('*, comercio:comercio_id (nombre)');
 
       if (error) throw error;
 
@@ -139,6 +139,63 @@ export function useProductos() {
   };
 
   // -------------------------
+  // UPDATE PRECIO
+  // -------------------------
+  const updatePrecio = async (id: number, precio: number) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('productos')
+        .update({ precio })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProductos();
+    } catch (err) {
+      setError('Error al actualizar precio');
+      throw err;
+    }
+  };
+
+  // -------------------------
+  // TOGGLE PUBLICADO
+  // -------------------------
+  const togglePublicado = async (id: number, publicado: boolean) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('productos')
+        .update({ publicado })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProductos();
+    } catch (err) {
+      setError('Error al actualizar publicación');
+      throw err;
+    }
+  };
+
+  // -------------------------
+  // TOGGLE DISPONIBLE
+  // -------------------------
+  const toggleDisponible = async (id: number, disponible: boolean) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('productos')
+        .update({ disponible })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProductos();
+    } catch (err) {
+      setError('Error al actualizar disponibilidad');
+      throw err;
+    }
+  };
+
+  // -------------------------
   // INIT
   // -------------------------
   useEffect(() => {
@@ -153,5 +210,8 @@ export function useProductos() {
     createProducto,
     updateProducto,
     deleteProducto,
+    updatePrecio,
+    togglePublicado,
+    toggleDisponible,
   };
 }

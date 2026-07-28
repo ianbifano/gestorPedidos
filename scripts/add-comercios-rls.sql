@@ -1,17 +1,8 @@
--- Migracion: ABM de comercio con aislamiento multi-tenant real.
+-- Migracion: RLS para comercios usando la tabla puente users_x_comercios.
 -- Ejecutar en el SQL Editor de Supabase.
--- Importante: los comercios existentes con user_id NULL no seran visibles
--- hasta asignarlos manualmente a un usuario de auth.users.
+-- La relacion user <-> comercio se resuelve via users_x_comercios + users.
 
 BEGIN;
-
-ALTER TABLE comercios
-  ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
-
-ALTER TABLE comercios
-  ALTER COLUMN user_id SET DEFAULT auth.uid();
-
-CREATE INDEX IF NOT EXISTS idx_comercios_user ON comercios(user_id);
 
 ALTER TABLE comercios ENABLE ROW LEVEL SECURITY;
 
@@ -21,11 +12,23 @@ DROP POLICY IF EXISTS "Users can manage own comercios" ON comercios;
 CREATE POLICY "Users can manage own comercios" ON comercios
   FOR ALL
   TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM users_x_comercios uxc
+      JOIN users u ON u.user_id = uxc.user_id
+      WHERE uxc.comercio_id = comercios.id
+        AND u.email = auth.email()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM users_x_comercios uxc
+      JOIN users u ON u.user_id = uxc.user_id
+      WHERE uxc.comercio_id = comercios.id
+        AND u.email = auth.email()
+    )
+  );
 
 COMMIT;
-
--- Para conservar comercios existentes, reemplazar <USER_UUID> por el id del
--- usuario dueño y ejecutar antes de usar la app:
--- UPDATE comercios SET user_id = '<USER_UUID>' WHERE user_id IS NULL;

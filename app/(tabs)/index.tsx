@@ -1,18 +1,24 @@
 import { ThemedView } from '@/components/themed-view';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
 import { usePedidos } from '@/hooks/use-pedidos';
 import { useEstados } from '@/contexts/EstadosContext';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 export default function DashboardScreen() {
+  const { user } = useAuth();
+  const { comercios, loading: loadingComercios } = useComercios();
   const { pedidos, loading, error, fetchPedidos } = usePedidos();
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
+  const tieneComercios = comercios.length > 0;
 
   useFocusEffect(
     useCallback(() => {
@@ -20,7 +26,7 @@ export default function DashboardScreen() {
     }, [fetchPedidos])
   );
 
-  if (loading) {
+  if (loading || loadingComercios) {
     return (
       <ThemedView style={styles.container}>
         <ActivityIndicator size="large" />
@@ -28,8 +34,43 @@ export default function DashboardScreen() {
     );
   }
 
-  const ultimosPedidos = pedidos.slice(0, 3);
+  if (!tieneComercios) {
+    return (
+      <ScrollView style={styles.scrollContainer}>
+        <ThemedView style={styles.container}>
+          <View style={styles.welcomeContainer}>
+            <View style={[styles.avatarCircle, { backgroundColor: C.tint }]}>
+              <IconSymbol size={48} pack="material" name="person" color="#FFFFFF" />
+            </View>
+            <Text style={[styles.welcomeTitle, { color: C.text }]}>Hola, {user?.user_metadata?.username || user?.email?.split('@')[0]}</Text>
+            <Text style={[styles.welcomeSubtitle, { color: C.icon }]}>
+              Todavía no tenés un comercio registrado.
+            </Text>
+            <Text style={[styles.welcomeDescription, { color: C.icon }]}>
+              Creá tu comercio para empezar a vender y gestionar tus pedidos.
+            </Text>
+          </View>
 
+          <View style={[styles.infoCard, { backgroundColor: C.card, borderColor: C.border }]}>
+            <IconSymbol size={28} pack="material" name="store" color={C.tint} />
+            <View style={styles.infoCardContent}>
+              <Text style={[styles.infoCardTitle, { color: C.text }]}>Tu cuenta</Text>
+              <Text style={[styles.infoCardText, { color: C.icon }]}>{user?.email}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.buttonPrimary, { backgroundColor: C.tint }]}
+            onPress={() => router.push('/crear-comercio')}>
+            <IconSymbol size={20} pack="material" name="add-business" color="#FFFFFF" />
+            <Text style={styles.buttonText}>+ Crear mi comercio</Text>
+          </TouchableOpacity>
+        </ThemedView>
+      </ScrollView>
+    );
+  }
+
+  const ultimosPedidos = pedidos.slice(0, 3);
   const { estados, getEstadoNombre } = useEstados();
 
   return (
@@ -164,6 +205,15 @@ function createStyles(C: typeof Colors.light) {
   return StyleSheet.create({
     scrollContainer: { flex: 1 },
     container: { padding: 20 },
+    welcomeContainer: { alignItems: 'center', marginTop: 40, marginBottom: 30 },
+    avatarCircle: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+    welcomeTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
+    welcomeSubtitle: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
+    welcomeDescription: { fontSize: 14, textAlign: 'center', paddingHorizontal: 20 },
+    infoCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 24 },
+    infoCardContent: { flex: 1 },
+    infoCardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
+    infoCardText: { fontSize: 13 },
     cardContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 20, gap: 10 },
     card: { width: '30%', paddingVertical: 20, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     cardNumber: { fontSize: 28, fontWeight: 'bold', marginBottom: 5, color: C.text },
@@ -183,7 +233,7 @@ function createStyles(C: typeof Colors.light) {
     pedidoMonto: { fontSize: 14, fontWeight: 'bold', color: C.tint },
     pedidoDate: { fontSize: 12, color: C.icon },
     emptyText: { fontSize: 14, color: C.icon, textAlign: 'center', paddingVertical: 20 },
-    buttonPrimary: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 20 },
+    buttonPrimary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 8, marginTop: 20 },
     buttonSecondary: { backgroundColor: C.lightGray, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10 },
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     buttonTextSecondary: { color: C.tint, fontSize: 16, fontWeight: '600' },
