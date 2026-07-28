@@ -2,11 +2,11 @@ import { Colors } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
 import { usePedidoDesdeCarrito } from '@/hooks/use-pedido-desde-carrito';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useToast } from '@/components/Toast';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -22,6 +22,7 @@ export function CartSummary() {
   const { items, updateQuantity, removeItem, getSummary } = useCart();
   const { procesarPedido, loading: procesando } = usePedidoDesdeCarrito();
   const router = useRouter();
+  const { show: showToast } = useToast();
   const [procesandoPedido, setProcesandoPedido] = useState(false);
 
   const summary = getSummary();
@@ -33,24 +34,12 @@ export function CartSummary() {
       const mensaje = resultado.cantidad === 1
         ? `Tu pedido #${resultado.pedidoIds[0]} fue creado correctamente`
         : `Se crearon ${resultado.cantidad} pedidos correctamente`;
-      Alert.alert(
-        'Pedido generado',
-        mensaje,
-        [
-          {
-            text: 'Ver pedidos',
-            onPress: () => router.push('/(tabs)/explore'),
-          },
-          {
-            text: 'OK',
-            style: 'cancel',
-          },
-        ]
-      );
+      showToast(mensaje, 'success');
+      router.push('/(tabs)/explore');
     } catch (err) {
-      Alert.alert(
-        'Error',
-        err instanceof Error ? err.message : 'No se pudo procesar el pedido'
+      showToast(
+        err instanceof Error ? err.message : 'No se pudo procesar el pedido',
+        'error'
       );
     } finally {
       setProcesandoPedido(false);

@@ -133,18 +133,6 @@ export default function DashboardScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.buttonPrimary}
-          onPress={() => router.push('/crear-pedido')}>
-          <Text style={styles.buttonText}>+ Crear Pedido</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.buttonSecondary}
-          onPress={() => router.push('/crear-cliente')}>
-          <Text style={styles.buttonTextSecondary}>+ Nuevo Cliente</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
           style={styles.buttonSecondary}
           onPress={() => router.push('/comercios')}>
           <Text style={styles.buttonTextSecondary}>Mis Comercios</Text>

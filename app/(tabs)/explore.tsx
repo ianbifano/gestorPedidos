@@ -8,7 +8,7 @@ import { usePedidos } from '@/hooks/use-pedidos';
 import { Pedido } from '@/types/pedido';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
 const BADGE_COLORS: Record<number, string> = {
@@ -18,6 +18,43 @@ const BADGE_COLORS: Record<number, string> = {
 
 function getBadgeColor(estado: number) {
   return { backgroundColor: BADGE_COLORS[estado] || '#999' };
+}
+
+type PedidoSection = {
+  title: string;
+  data: Pedido[];
+  isComercio: boolean;
+};
+
+function groupByComercio(pedidos: Pedido[]): PedidoSection[] {
+  const map = new Map<number, Pedido[]>();
+  const sinComercio: Pedido[] = [];
+
+  for (const p of pedidos) {
+    if (p.comercio_id != null) {
+      const arr = map.get(p.comercio_id) ?? [];
+      arr.push(p);
+      map.set(p.comercio_id, arr);
+    } else {
+      sinComercio.push(p);
+    }
+  }
+
+  const sections: PedidoSection[] = [];
+  for (const [comercioId, data] of map) {
+    sections.push({
+      title: data[0].comercio?.nombre ?? `Comercio #${comercioId}`,
+      data,
+      isComercio: true,
+    });
+  }
+  sections.sort((a, b) => a.title.localeCompare(b.title));
+
+  if (sinComercio.length > 0) {
+    sections.push({ title: 'Otros', data: sinComercio, isComercio: true });
+  }
+
+  return sections;
 }
 
 export default function PedidosScreen() {
@@ -42,24 +79,29 @@ export default function PedidosScreen() {
     }, [isDueno, fetchPedidos, fetchPedidosCliente])
   );
 
-  const filteredPedidos = useMemo(() => {
-    let source: Pedido[];
-    if (isDueno) {
-      const combined = [...pedidos, ...pedidosCliente];
-      const seen = new Set<number>();
-      source = combined.filter((p) => {
-        if (seen.has(p.id)) return false;
-        seen.add(p.id);
-        return true;
-      });
-    } else {
-      source = pedidosCliente;
+  const filterByEstado = useCallback(
+    (list: Pedido[]) => estado !== undefined ? list.filter((p) => p.estado === estado) : list,
+    [estado]
+  );
+
+  const sections = useMemo(() => {
+    if (!isDueno) return [];
+
+    const result: PedidoSection[] = [];
+
+    const clienteFiltrados = filterByEstado(pedidosCliente);
+    if (clienteFiltrados.length > 0) {
+      result.push({ title: 'Mis Compras', data: clienteFiltrados, isComercio: false });
     }
-    if (estado !== undefined) {
-      return source.filter((p) => p.estado === estado);
-    }
-    return source;
-  }, [isDueno, pedidos, pedidosCliente, estado]);
+
+    const duenoFiltrados = filterByEstado(pedidos);
+    const comercioSections = groupByComercio(duenoFiltrados);
+    result.push(...comercioSections);
+
+    return result;
+  }, [isDueno, pedidos, pedidosCliente, filterByEstado]);
+
+  const clienteFiltrados = useMemo(() => filterByEstado(pedidosCliente), [pedidosCliente, filterByEstado]);
 
   if (loading) {
     return (
@@ -74,7 +116,7 @@ export default function PedidosScreen() {
       <ThemedView style={styles.container}>
         {error && <Text style={styles.error}>{error}</Text>}
 
-        {filteredPedidos.length === 0 ? (
+        {clienteFiltrados.length === 0 ? (
           <View style={styles.emptyState}>
             <IconSymbol size={64} pack="material" name="receipt-long" color={C.icon} />
             <Text style={[styles.emptyStateText, { color: C.icon }]}>
@@ -85,9 +127,12 @@ export default function PedidosScreen() {
             </Text>
           </View>
         ) : (
-          <FlatList
-            data={filteredPedidos}
+          <SectionList
+            sections={[{ title: 'Mis Compras', data: clienteFiltrados }]}
             keyExtractor={(item) => item.id.toString()}
+            renderSectionHeader={({ section }) => (
+              <Text style={[styles.sectionTitle, { color: C.text }]}>{section.title}</Text>
+            )}
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={styles.clientPedidoCard}
@@ -119,35 +164,79 @@ export default function PedidosScreen() {
                 </View>
               </TouchableOpacity>
             )}
-            contentContainerStyle={styles.listContent}
-          />
-        )}
-      </ThemedView>
-    );
-  }
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+    </ThemedView>
+  );
+}
 
   return (
     <ThemedView style={styles.container}>
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {filteredPedidos.length === 0 ? (
+      {sections.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>
             {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
-          <TouchableOpacity style={styles.buttonCreate} onPress={() => router.push('/crear-pedido')}>
-            <Text style={styles.buttonText}>+ Crear Pedido</Text>
-          </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={filteredPedidos}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <PedidoCard pedido={item} onPress={() => router.push(`/pedido-detalle?id=${item.id}`)} />
+          renderSectionHeader={({ section }) => (
+            <View style={[styles.sectionHeader, { backgroundColor: section.isComercio ? C.card : C.lightGray }]}>
+              <IconSymbol
+                size={18}
+                pack="material"
+                name={section.isComercio ? 'store' : 'shopping-bag'}
+                color={C.tint}
+              />
+              <Text style={[styles.sectionTitle, { color: C.text }]}>{section.title}</Text>
+              <Text style={[styles.sectionCount, { color: C.icon }]}>{section.data.length}</Text>
+            </View>
           )}
-          scrollEnabled={true}
-          removeClippedSubviews={true}
+          renderItem={({ item, section }) => (
+            section.isComercio ? (
+              <PedidoCard pedido={item} onPress={() => router.push(`/pedido-detalle?id=${item.id}`)} />
+            ) : (
+              <TouchableOpacity
+                style={styles.clientPedidoCard}
+                onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
+                <View style={styles.clientPedidoHeader}>
+                  <Text style={[styles.clientPedidoId, { color: C.text }]}>Pedido #{item.id}</Text>
+                  <View style={[styles.miniBadge, getBadgeColor(item.estado)]}>
+                    <Text style={styles.miniBadgeText}>{getEstadoNombre(item.estado)}</Text>
+                  </View>
+                </View>
+                {item.comercio && (
+                  <View style={[styles.comercioTag, { backgroundColor: C.lightGray }]}>
+                    <IconSymbol size={12} pack="material" name="store" color={C.tint} />
+                    <Text style={[styles.comercioTagText, { color: C.tint }]}>{item.comercio.nombre}</Text>
+                  </View>
+                )}
+                <Text style={[styles.clientPedidoDesc, { color: C.icon }]} numberOfLines={2}>
+                  {item.descripcion}
+                </Text>
+                <View style={styles.clientPedidoFooter}>
+                  <Text style={[styles.clientPedidoMonto, { color: C.tint }]}>
+                    ${item.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                  </Text>
+                  <Text style={[styles.clientPedidoDate, { color: C.icon }]}>
+                    {new Date(item.created_at).toLocaleDateString('es-AR', {
+                      day: 'numeric', month: 'short', year: 'numeric'
+                    })}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )
+          )}
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          stickySectionHeadersEnabled={false}
+          renderSectionFooter={() => <View style={{ height: 6 }} />}
           contentContainerStyle={styles.listContent}
         />
       )}
@@ -158,13 +247,30 @@ export default function PedidosScreen() {
 function createStyles(C: typeof Colors.light) {
   return StyleSheet.create({
     container: { flex: 1, padding: 15 },
-    listContent: { paddingVertical: 8, gap: 10 },
+    listContent: { paddingVertical: 8 },
     emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
     emptyStateText: { fontSize: 16, color: C.icon, marginTop: 12, marginBottom: 6 },
     emptyStateSubtext: { fontSize: 13, textAlign: 'center', paddingHorizontal: 30 },
-    buttonCreate: { backgroundColor: C.tint, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
-    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+      marginTop: 10,
+      marginBottom: 4,
+    },
+    sectionTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      flex: 1,
+    },
+    sectionCount: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
     clientPedidoCard: {
       backgroundColor: C.card,
       borderRadius: 10,
