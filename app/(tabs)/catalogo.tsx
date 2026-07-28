@@ -8,7 +8,7 @@ import { useProductos } from '@/hooks/use-productos';
 import { Producto } from '@/types/producto';
 import { useFocusEffect } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -17,6 +17,7 @@ import {
     SafeAreaView,
     StyleSheet,
     Text,
+    TextInput,
     View
 } from 'react-native';
 
@@ -29,6 +30,7 @@ export default function CatalogScreen() {
   const { productos, loading, fetchProductos, deleteProducto } = useProductos();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
   const isOwner = isDueno;
 
   useFocusEffect(
@@ -38,6 +40,17 @@ export default function CatalogScreen() {
   );
 
   const summary = getSummary();
+
+  const filteredProductos = useMemo(() => {
+    if (!searchQuery.trim()) return productos;
+    const query = searchQuery.toLowerCase().trim();
+    return productos.filter(
+      (p) =>
+        p.nombre.toLowerCase().includes(query) ||
+        (p.descripcion && p.descripcion.toLowerCase().includes(query)) ||
+        (p.comercio?.nombre && p.comercio.nombre.toLowerCase().includes(query))
+    );
+  }, [productos, searchQuery]);
 
   const styles = StyleSheet.create({
     container: {
@@ -65,6 +78,26 @@ export default function CatalogScreen() {
     headerSubtitle: {
       fontSize: 13,
       color: colors.icon,
+    },
+    searchContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 10,
+      marginBottom: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.card,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 14,
+      color: colors.text,
+      paddingVertical: 2,
     },
     emptyContainer: {
       flex: 1,
@@ -224,6 +257,24 @@ export default function CatalogScreen() {
         </Text>
       </View>
 
+      {productos.length > 0 && (
+        <View style={styles.searchContainer}>
+          <IconSymbol size={18} pack="material" name="search" color={colors.icon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por producto o comercio..."
+            placeholderTextColor={colors.icon}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <Pressable onPress={() => setSearchQuery('')}>
+              <IconSymbol size={18} pack="material" name="close" color={colors.icon} />
+            </Pressable>
+          )}
+        </View>
+      )}
+
       {productos.length === 0 ? (
         <View style={styles.emptyContainer}>
           <IconSymbol size={64} pack="material" name="shopping-bag" color={colors.icon} />
@@ -234,9 +285,17 @@ export default function CatalogScreen() {
             </Pressable>
           )}
         </View>
+      ) : filteredProductos.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <IconSymbol size={64} pack="material" name="search-off" color={colors.icon} />
+          <Text style={styles.emptyText}>No se encontraron productos</Text>
+          <Text style={[styles.emptyText, { fontSize: 13 }]}>
+            Probá con otro término de búsqueda
+          </Text>
+        </View>
       ) : (
         <FlatList
-          data={productos}
+          data={filteredProductos}
           keyExtractor={(item) => String(item.id)}
           numColumns={1}
           contentContainerStyle={styles.contentContainer}

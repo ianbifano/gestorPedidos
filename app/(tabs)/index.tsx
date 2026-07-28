@@ -173,6 +173,36 @@ export default function DashboardScreen() {
                 : 0}%
             </Text>
           </Text>
+
+          {comercios.length > 0 && (
+            <View style={styles.comerciosStats}>
+              <Text style={[styles.statsTitle, { marginTop: 12 }]}>Por Comercio</Text>
+              {comercios.map((c) => {
+                const pedidosComercio = pedidos.filter((p) => p.comercio_id === c.id);
+                const entregados = pedidosComercio.filter((p) => p.estado === 6).length;
+                const montoTotal = pedidosComercio.reduce((sum, p) => sum + p.monto, 0);
+                return (
+                  <View key={c.id} style={[styles.comercioStatRow, { borderBottomColor: C.border }]}>
+                    <View style={styles.comercioStatHeader}>
+                      <IconSymbol size={14} pack="material" name="store" color={C.tint} />
+                      <Text style={[styles.comercioStatName, { color: C.text }]}>{c.nombre}</Text>
+                    </View>
+                    <View style={styles.comercioStatDetails}>
+                      <Text style={[styles.comercioStatDetail, { color: C.icon }]}>
+                        {pedidosComercio.length} pedidos
+                      </Text>
+                      <Text style={[styles.comercioStatDetail, { color: C.icon }]}>
+                        {entregados} entregados
+                      </Text>
+                      <Text style={[styles.comercioStatDetail, { color: C.tint }]}>
+                        ${montoTotal.toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       </ThemedView>
     </ScrollView>
@@ -241,6 +271,12 @@ function createStyles(C: typeof Colors.light) {
     statsTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10, color: C.text },
     statsSubtitle: { fontSize: 14, color: C.icon, marginBottom: 6 },
     statValue: { fontWeight: 'bold', color: C.tint },
+    comerciosStats: { marginTop: 4 },
+    comercioStatRow: { paddingTop: 10, paddingBottom: 10, borderBottomWidth: 1 },
+    comercioStatHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+    comercioStatName: { fontSize: 14, fontWeight: '600' },
+    comercioStatDetails: { flexDirection: 'row', gap: 16, paddingLeft: 20 },
+    comercioStatDetail: { fontSize: 13 },
     error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
   });
 }

@@ -22,7 +22,8 @@ export function usePedidos() {
         .from('pedidos')
         .select(`
           *,
-          cliente:cliente_id (nombre, telefono)
+          cliente:cliente_id (nombre, telefono),
+          comercio:comercio_id (nombre)
         `)
         .order('created_at', { ascending: false });
 
@@ -50,8 +51,7 @@ export function usePedidos() {
       const { data: clienteData, error: clienteErr } = await supabase
         .from('clientes')
         .select('id')
-        .eq('user_id', user.id)
-        .limit(1);
+        .eq('user_id', user.id);
 
       if (clienteErr) throw clienteErr;
 
@@ -60,7 +60,7 @@ export function usePedidos() {
         return;
       }
 
-      const clienteId = clienteData[0].id;
+      const clienteIds = clienteData.map((c) => c.id);
 
       const { data, error: err } = await supabase
         .from('pedidos')
@@ -69,7 +69,7 @@ export function usePedidos() {
           cliente:cliente_id (nombre, telefono),
           comercio:comercio_id (nombre)
         `)
-        .eq('cliente_id', clienteId)
+        .in('cliente_id', clienteIds)
         .order('created_at', { ascending: false });
 
       if (err) throw err;
@@ -98,7 +98,8 @@ export function usePedidos() {
         .insert([payload])
         .select(`
           *,
-          cliente:cliente_id (nombre, telefono)
+          cliente:cliente_id (nombre, telefono),
+          comercio:comercio_id (nombre)
         `)
         .single();
 
@@ -129,7 +130,8 @@ export function usePedidos() {
         .eq('id', id)
         .select(`
           *,
-          cliente:cliente_id (nombre, telefono)
+          cliente:cliente_id (nombre, telefono),
+          comercio:comercio_id (nombre)
         `)
         .single();
 

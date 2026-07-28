@@ -35,6 +35,7 @@ export default function PedidosScreen() {
     useCallback(() => {
       if (isDueno) {
         fetchPedidos();
+        fetchPedidosCliente();
       } else {
         fetchPedidosCliente();
       }
@@ -42,7 +43,18 @@ export default function PedidosScreen() {
   );
 
   const filteredPedidos = useMemo(() => {
-    const source = isDueno ? pedidos : pedidosCliente;
+    let source: Pedido[];
+    if (isDueno) {
+      const combined = [...pedidos, ...pedidosCliente];
+      const seen = new Set<number>();
+      source = combined.filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
+    } else {
+      source = pedidosCliente;
+    }
     if (estado !== undefined) {
       return source.filter((p) => p.estado === estado);
     }

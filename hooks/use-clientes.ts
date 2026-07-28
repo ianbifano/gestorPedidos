@@ -14,7 +14,7 @@ export function useClientes() {
       setError(null);
       const { data, error: err } = await supabase
         .from('clientes')
-        .select('*')
+        .select('*, comercio:comercio_id (nombre)')
         .order('nombre', { ascending: true });
 
       if (err) throw err;
@@ -37,19 +37,26 @@ export function useClientes() {
     );
   };
 
-  const createCliente = async (nombre: string, telefono?: string) => {
+  const createCliente = async (nombre: string, telefono?: string, comercio_id?: number | null) => {
     try {
       setError(null);
 
-      // Verificar duplicado de teléfono
       if (telefono && existeTelefono(telefono)) {
         throw new Error('Ya existe un cliente con este teléfono');
       }
 
+      const payload: Record<string, unknown> = {
+        nombre,
+        telefono: telefono ? normalizarTelefono(telefono) : null,
+      };
+      if (comercio_id !== undefined && comercio_id !== null) {
+        payload.comercio_id = comercio_id;
+      }
+
       const { data, error: err } = await supabase
         .from('clientes')
-        .insert([{ nombre, telefono: telefono ? normalizarTelefono(telefono) : null }])
-        .select()
+        .insert([payload])
+        .select('*, comercio:comercio_id (nombre)')
         .single();
 
       if (err) throw err;
@@ -62,20 +69,27 @@ export function useClientes() {
     }
   };
 
-  const updateCliente = async (id: number, nombre: string, telefono?: string) => {
+  const updateCliente = async (id: number, nombre: string, telefono?: string, comercio_id?: number | null) => {
     try {
       setError(null);
 
-      // Verificar duplicado de teléfono
       if (telefono && existeTelefono(telefono, id)) {
         throw new Error('Ya existe otro cliente con este teléfono');
       }
 
+      const payload: Record<string, unknown> = {
+        nombre,
+        telefono: telefono ? normalizarTelefono(telefono) : null,
+      };
+      if (comercio_id !== undefined) {
+        payload.comercio_id = comercio_id || null;
+      }
+
       const { data, error: err } = await supabase
         .from('clientes')
-        .update({ nombre, telefono: telefono ? normalizarTelefono(telefono) : null })
+        .update(payload)
         .eq('id', id)
-        .select()
+        .select('*, comercio:comercio_id (nombre)')
         .single();
 
       if (err) throw err;

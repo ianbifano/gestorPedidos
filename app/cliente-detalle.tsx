@@ -92,6 +92,12 @@ export default function ClienteDetalleScreen() {
                 <Text style={styles.infoValue}>{cliente.telefono}</Text>
               </View>
             )}
+            {cliente.comercio && (
+              <View style={[styles.infoRow, styles.borderTop]}>
+                <Text style={styles.infoLabel}>Comercio:</Text>
+                <Text style={styles.infoValue}>{cliente.comercio.nombre}</Text>
+              </View>
+            )}
             <View style={[styles.infoRow, styles.borderTop]}>
               <Text style={styles.infoLabel}>Creado:</Text>
               <Text style={styles.infoValue}>
