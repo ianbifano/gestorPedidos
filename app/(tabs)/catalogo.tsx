@@ -12,12 +12,14 @@ import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
-    FlatList,
+    Platform,
     Pressable,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
+    useWindowDimensions,
     View
 } from 'react-native';
 
@@ -32,6 +34,19 @@ export default function CatalogScreen() {
   const [addedProduct, setAddedProduct] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const isOwner = isDueno;
+  const { width: screenWidth } = useWindowDimensions();
+  const isWeb = Platform.OS === 'web';
+
+  const gap = 12;
+  const horizontalPadding = isWeb ? 32 : 16;
+  const minCardWidth = isWeb ? 250 : 160;
+  const availableWidth = screenWidth - horizontalPadding * 2;
+
+  const numColumns = isWeb
+    ? Math.max(2, Math.floor((availableWidth + gap) / (minCardWidth + gap)))
+    : 2;
+
+  const cardWidth = (availableWidth - gap * (numColumns - 1)) / numColumns;
 
   useFocusEffect(
     useCallback(() => {
@@ -57,10 +72,18 @@ export default function CatalogScreen() {
       flex: 1,
       backgroundColor: colors.background,
     },
-    contentContainer: {
-      paddingHorizontal: 16,
+    scrollContent: {
+      paddingHorizontal: horizontalPadding,
       paddingTop: 8,
-      paddingBottom: 80,
+      paddingBottom: 100,
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap,
+    },
+    gridItem: {
+      width: cardWidth,
     },
     header: {
       paddingHorizontal: 16,
@@ -232,6 +255,14 @@ export default function CatalogScreen() {
     );
   };
 
+  const renderProduct = (product: Producto) => {
+    return isOwner ? (
+      <ProductCard product={product} onPress={handlePress} onEdit={handleEdit} onDelete={handleDelete} />
+    ) : (
+      <ProductCard product={product} onPress={handlePress} onAddToCart={handleAddToCart} />
+    );
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -294,19 +325,29 @@ export default function CatalogScreen() {
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={filteredProductos}
-          keyExtractor={(item) => String(item.id)}
-          numColumns={1}
-          contentContainerStyle={styles.contentContainer}
-          renderItem={({ item }) =>
-            isOwner ? (
-              <ProductCard product={item} onPress={handlePress} onEdit={handleEdit} onDelete={handleDelete} />
-            ) : (
-              <ProductCard product={item} onPress={handlePress} onAddToCart={handleAddToCart} />
-            )
-          }
-        />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={[
+            styles.gridContainer,
+            isWeb && ({
+              display: 'grid',
+              gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`,
+              gap,
+            } as any),
+          ]}>
+            {isWeb
+              ? filteredProductos.map((item) => (
+                  <View key={item.id}>
+                    {renderProduct(item)}
+                  </View>
+                ))
+              : filteredProductos.map((item) => (
+                  <View key={item.id} style={styles.gridItem}>
+                    {renderProduct(item)}
+                  </View>
+                ))
+            }
+          </View>
+        </ScrollView>
       )}
 
       {!isOwner && showAddedToast && (

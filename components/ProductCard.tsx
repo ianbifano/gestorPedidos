@@ -1,4 +1,3 @@
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Producto } from '@/types/producto';
 import React from 'react';
@@ -23,31 +22,26 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, onTogglePublicado, onToggleDisponible }: ProductCardProps) {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const isOwnerMode = !!(onEdit && onDelete);
 
   const styles = StyleSheet.create({
     container: {
-      flex: 1,
-      margin: 8,
-      borderRadius: 12,
+      borderRadius: 14,
+      backgroundColor: '#1E1E24',
       overflow: 'hidden',
-      backgroundColor: colors.card,
-      borderWidth: 1,
-      borderColor: colors.border,
-      elevation: 2,
+      elevation: 6,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.25,
+      shadowRadius: 6,
     },
     imageContainer: {
       width: '100%',
-      height: 180,
-      backgroundColor: colors.lightGray,
-      justifyContent: 'center',
-      alignItems: 'center',
+      height: 160,
+      backgroundColor: '#2A2A30',
       overflow: 'hidden',
+      borderTopLeftRadius: 14,
+      borderTopRightRadius: 14,
     },
     image: {
       width: '100%',
@@ -55,44 +49,44 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
       resizeMode: 'cover',
     },
     imagePlaceholder: {
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      backgroundColor: colors.tint,
+      width: '100%',
+      height: '100%',
       justifyContent: 'center',
       alignItems: 'center',
-      opacity: 0.2,
+      backgroundColor: '#2A2A30',
     },
     content: {
       padding: 12,
-      flex: 1,
     },
     nombre: {
       fontSize: 14,
-      fontWeight: '700',
-      color: colors.text,
-      marginBottom: 6,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 4,
     },
     comercioBadge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
       paddingHorizontal: 6,
-      paddingVertical: 3,
+      paddingVertical: 2,
       borderRadius: 4,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      alignSelf: 'flex-start',
       marginBottom: 6,
     },
     comercioNombre: {
-      fontSize: 11,
+      fontSize: 10,
       fontWeight: '600',
+      color: '#AAAAAA',
     },
     descripcion: {
       fontSize: 12,
-      color: colors.icon,
+      color: '#888888',
       lineHeight: 16,
-      marginBottom: 10,
+      marginBottom: 8,
     },
-    statusBadges: {
+    statusRow: {
       flexDirection: 'row',
       gap: 6,
       marginBottom: 8,
@@ -100,10 +94,10 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
     badge: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 3,
       paddingHorizontal: 6,
-      paddingVertical: 2,
-      borderRadius: 4,
+      paddingVertical: 3,
+      borderRadius: 5,
     },
     badgeText: {
       fontSize: 10,
@@ -115,83 +109,80 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
       alignItems: 'center',
       paddingTop: 8,
       borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopColor: 'rgba(255,255,255,0.08)',
     },
     precio: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: colors.tint,
+      fontSize: 17,
+      fontWeight: '800',
+      color: '#FF9500',
+    },
+    iconButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    iconButtonEdit: {
+      backgroundColor: 'rgba(0,122,255,0.2)',
+    },
+    iconButtonDelete: {
+      backgroundColor: 'rgba(255,59,48,0.2)',
+    },
+    iconButtonCart: {
+      backgroundColor: '#007AFF',
     },
     ownerActions: {
       flexDirection: 'row',
       gap: 6,
     },
-    button: {
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      borderRadius: 6,
-      backgroundColor: colors.tint,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    deleteButton: {
-      backgroundColor: '#EF5350',
-    },
-    toggleButton: {
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-    },
-    buttonText: {
-      color: '#FFFFFF',
-      fontWeight: '600',
-      fontSize: 11,
-    },
   });
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.container, pressed && { opacity: 0.95 }]}
+      style={({ pressed }) => [styles.container, pressed && { opacity: 0.92 }]}
       onPress={() => onPress?.(product)}>
       <View style={styles.imageContainer}>
         {product.imagen ? (
           <Image source={{ uri: product.imagen }} style={styles.image} />
         ) : (
           <View style={styles.imagePlaceholder}>
-            <IconSymbol size={32} pack="material" name="restaurant" color={colors.tint} />
+            <IconSymbol size={36} pack="material" name="restaurant" color="#555555" />
           </View>
         )}
       </View>
 
       <View style={styles.content}>
         <Text style={styles.nombre} numberOfLines={2}>{product.nombre}</Text>
+
         {product.comercio && (
-          <View style={[styles.comercioBadge, { backgroundColor: colors.lightGray }]}>
-            <IconSymbol size={12} pack="material" name="store" color={colors.tint} />
-            <Text style={[styles.comercioNombre, { color: colors.tint }]}>{product.comercio.nombre}</Text>
+          <View style={styles.comercioBadge}>
+            <IconSymbol size={10} pack="material" name="store" color="#AAAAAA" />
+            <Text style={styles.comercioNombre} numberOfLines={1}>{product.comercio.nombre}</Text>
           </View>
         )}
+
         {product.descripcion ? (
           <Text style={styles.descripcion} numberOfLines={2}>{product.descripcion}</Text>
         ) : null}
 
         {isOwnerMode && (
-          <View style={styles.statusBadges}>
+          <View style={styles.statusRow}>
             <Pressable
               style={[
                 styles.badge,
-                { backgroundColor: product.publicado !== false ? '#E8F5E9' : '#FFEBEE' }
+                { backgroundColor: product.publicado !== false ? 'rgba(46,125,50,0.2)' : 'rgba(198,40,40,0.2)' }
               ]}
               onPress={(e) => { e.stopPropagation(); onTogglePublicado?.(product); }}>
               <IconSymbol
                 size={10}
                 pack="material"
                 name={product.publicado !== false ? 'visibility' : 'visibility-off'}
-                color={product.publicado !== false ? '#2E7D32' : '#C62828'}
+                color={product.publicado !== false ? '#4CAF50' : '#EF5350'}
               />
               <Text style={[
                 styles.badgeText,
-                { color: product.publicado !== false ? '#2E7D32' : '#C62828' }
+                { color: product.publicado !== false ? '#4CAF50' : '#EF5350' }
               ]}>
                 {product.publicado !== false ? 'Publicado' : 'Borrador'}
               </Text>
@@ -200,18 +191,18 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
             <Pressable
               style={[
                 styles.badge,
-                { backgroundColor: product.disponible ? '#E3F2FD' : '#FFF3E0' }
+                { backgroundColor: product.disponible ? 'rgba(21,101,192,0.2)' : 'rgba(230,81,0,0.2)' }
               ]}
               onPress={(e) => { e.stopPropagation(); onToggleDisponible?.(product); }}>
               <IconSymbol
                 size={10}
                 pack="material"
                 name={product.disponible ? 'check-circle' : 'pause-circle'}
-                color={product.disponible ? '#1565C0' : '#E65100'}
+                color={product.disponible ? '#42A5F5' : '#FF9800'}
               />
               <Text style={[
                 styles.badgeText,
-                { color: product.disponible ? '#1565C0' : '#E65100' }
+                { color: product.disponible ? '#42A5F5' : '#FF9800' }
               ]}>
                 {product.disponible ? 'Activo' : 'Inactivo'}
               </Text>
@@ -227,21 +218,21 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
           {isOwnerMode ? (
             <View style={styles.ownerActions}>
               <Pressable
-                style={({ pressed }) => [styles.button, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [styles.iconButton, styles.iconButtonEdit, pressed && { opacity: 0.7 }]}
                 onPress={(e) => { e.stopPropagation(); onEdit?.(product); }}>
-                <Text style={styles.buttonText}>Editar</Text>
+                <IconSymbol size={16} pack="material" name="edit" color="#007AFF" />
               </Pressable>
               <Pressable
-                style={({ pressed }) => [styles.button, styles.deleteButton, pressed && { opacity: 0.8 }]}
+                style={({ pressed }) => [styles.iconButton, styles.iconButtonDelete, pressed && { opacity: 0.7 }]}
                 onPress={(e) => { e.stopPropagation(); onDelete?.(product); }}>
-                <Text style={styles.buttonText}>Eliminar</Text>
+                <IconSymbol size={16} pack="material" name="delete" color="#FF3B30" />
               </Pressable>
             </View>
           ) : (
             <Pressable
-              style={({ pressed }) => [styles.button, pressed && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.iconButton, styles.iconButtonCart, pressed && { opacity: 0.8 }]}
               onPress={(e) => { e.stopPropagation(); onAddToCart?.(product); }}>
-              <Text style={styles.buttonText}>Agregar</Text>
+              <IconSymbol size={18} pack="material" name="add-shopping-cart" color="#FFFFFF" />
             </Pressable>
           )}
         </View>
