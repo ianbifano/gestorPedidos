@@ -1,4 +1,4 @@
-import { Colors } from '@/constants/theme';
+import { Colors, StateColors } from '@/constants/theme';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useEstados } from '@/contexts/EstadosContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -17,12 +17,13 @@ function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
   const styles = useMemo(() => createStyles(C), [C]);
   const { getEstadoNombre } = useEstados();
   const estadoNombre = getEstadoNombre(pedido.estado);
+  const badgeBg = StateColors[pedido.estado]?.[scheme === 'dark' ? 'dark' : 'light'] || '#999';
 
   return (
     <TouchableOpacity style={styles.pedidoItem} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.pedidoHeader}>
         <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
-        <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
+        <View style={[styles.miniBadge, { backgroundColor: badgeBg }]}>
           <Text style={styles.miniBadgeText}>{estadoNombre}</Text>
         </View>
       </View>
@@ -47,19 +48,6 @@ function PedidoCardComponent({ pedido, onPress }: PedidoCardProps) {
 }
 
 export const PedidoCard = React.memo(PedidoCardComponent);
-
-const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D',
-  2: '#42A5F5',
-  3: '#FF7043',
-  4: '#EF5350',
-  5: '#AB47BC',
-  6: '#66BB6A',
-};
-
-function getBadgeColor(estado: number) {
-  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
-}
 
 function createStyles(C: typeof Colors.light) {
   return StyleSheet.create({

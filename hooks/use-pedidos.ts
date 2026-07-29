@@ -6,6 +6,12 @@ import { useCallback, useEffect, useState } from 'react';
 const getMsg = (err: unknown, fallback: string): string =>
   err instanceof Error ? err.message : (err as any)?.message ?? fallback;
 
+const SELECT_QUERY = `
+  *,
+  cliente:cliente_id (nombre, telefono),
+  comercio:comercio_id (nombre)
+`;
+
 export function usePedidos() {
   const { user } = useAuth();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -20,11 +26,7 @@ export function usePedidos() {
       setError(null);
       let query = supabase
         .from('pedidos')
-        .select(`
-          *,
-          cliente:cliente_id (nombre, telefono),
-          comercio:comercio_id (nombre)
-        `)
+        .select(SELECT_QUERY)
         .order('created_at', { ascending: false });
 
       if (estado !== undefined) {
@@ -32,11 +34,35 @@ export function usePedidos() {
       }
 
       const { data, error: err } = await query;
-
       if (err) throw err;
       setPedidos(data || []);
     } catch (err) {
       setError(getMsg(err, 'Error al cargar pedidos'));
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchPedidosByStore = useCallback(async (storeId: number, estado?: number) => {
+    if (!user) return;
+    try {
+      setLoading(true);
+      setError(null);
+      let query = supabase
+        .from('pedidos')
+        .select(SELECT_QUERY)
+        .eq('comercio_id', storeId)
+        .order('created_at', { ascending: false });
+
+      if (estado !== undefined) {
+        query = query.eq('estado', estado);
+      }
+
+      const { data, error: err } = await query;
+      if (err) throw err;
+      setPedidos(data || []);
+    } catch (err) {
+      setError(getMsg(err, 'Error al cargar pedidos del comercio'));
     } finally {
       setLoading(false);
     }
@@ -57,6 +83,7 @@ export function usePedidos() {
 
       if (!clienteData || clienteData.length === 0) {
         setPedidosCliente([]);
+        setLoading(false);
         return;
       }
 
@@ -64,11 +91,7 @@ export function usePedidos() {
 
       const { data, error: err } = await supabase
         .from('pedidos')
-        .select(`
-          *,
-          cliente:cliente_id (nombre, telefono),
-          comercio:comercio_id (nombre)
-        `)
+        .select(SELECT_QUERY)
         .in('cliente_id', clienteIds)
         .order('created_at', { ascending: false });
 
@@ -78,6 +101,23 @@ export function usePedidos() {
       setError(getMsg(err, 'Error al cargar pedidos'));
     } finally {
       setLoading(false);
+    }
+  }, [user]);
+
+  const fetchPedidoById = useCallback(async (pedidoId: number): Promise<Pedido | null> => {
+    if (!user) return null;
+    try {
+      const { data, error: err } = await supabase
+        .from('pedidos')
+        .select(SELECT_QUERY)
+        .eq('id', pedidoId)
+        .maybeSingle();
+
+      if (err) throw err;
+      return data as Pedido | null;
+    } catch (err) {
+      setError(getMsg(err, 'Error al cargar el pedido'));
+      return null;
     }
   }, [user]);
 
@@ -96,11 +136,7 @@ export function usePedidos() {
       const { data, error: err } = await supabase
         .from('pedidos')
         .insert([payload])
-        .select(`
-          *,
-          cliente:cliente_id (nombre, telefono),
-          comercio:comercio_id (nombre)
-        `)
+        .select(SELECT_QUERY)
         .single();
 
       if (err) throw err;
@@ -128,15 +164,14 @@ export function usePedidos() {
           updated_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
         })
         .eq('id', id)
-        .select(`
-          *,
-          cliente:cliente_id (nombre, telefono),
-          comercio:comercio_id (nombre)
-        `)
+        .select(SELECT_QUERY)
         .single();
 
       if (err) throw err;
-      setPedidos(pedidos.map((p) => (p.id === id ? data : p)));
+
+      setPedidos((prev) => prev.map((p) => (p.id === id ? data : p)));
+      setPedidosCliente((prev) => prev.map((p) => (p.id === id ? data : p)));
+
       return data;
     } catch (err) {
       const msg = getMsg(err, 'Error al actualizar pedido');
@@ -160,6 +195,7 @@ export function usePedidos() {
 
       if (err) throw err;
       setPedidos((currentPedidos) => currentPedidos.filter((p) => p.id !== id));
+      setPedidosCliente((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       const msg = getMsg(err, 'Error al eliminar pedido');
       setError(msg);
@@ -167,13 +203,12 @@ export function usePedidos() {
     }
   };
 
-  const resumenPorEstado = (estado: number) => {
-    return pedidos.filter((p) => p.estado === estado).length;
+  const resumenPorEstado = (estado: number, storeId?: number | null) => {
+    const source = storeId
+      ? pedidos.filter((p) => p.comercio_id === storeId)
+      : pedidos;
+    return source.filter((p) => p.estado === estado).length;
   };
-
-  useEffect(() => {
-    fetchPedidos();
-  }, [fetchPedidos]);
 
   return {
     pedidos,
@@ -181,7 +216,9 @@ export function usePedidos() {
     loading,
     error,
     fetchPedidos,
+    fetchPedidosByStore,
     fetchPedidosCliente,
+    fetchPedidoById,
     createPedido,
     updatePedido,
     deletePedido,

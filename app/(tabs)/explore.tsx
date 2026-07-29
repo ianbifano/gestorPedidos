@@ -1,6 +1,6 @@
 import { PedidoCard } from '@/components/PedidoCard';
 import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
+import { Colors, StateColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEstados } from '@/contexts/EstadosContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -11,13 +11,9 @@ import React, { useCallback, useMemo } from 'react';
 import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 
-const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D', 2: '#42A5F5', 3: '#FF7043',
-  4: '#EF5350', 5: '#AB47BC', 6: '#66BB6A',
-};
-
-function getBadgeColor(estado: number) {
-  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
+function getBadgeColor(estado: number, scheme: 'light' | 'dark') {
+  const colors = StateColors[estado];
+  return { backgroundColor: colors ? colors[scheme] : '#999' };
 }
 
 type PedidoSection = {
@@ -59,10 +55,12 @@ function groupByComercio(pedidos: Pedido[]): PedidoSection[] {
 
 export default function PedidosScreen() {
   const { isDueno } = useAuth();
-  const { pedidos, pedidosCliente, loading, error, fetchPedidos, fetchPedidosCliente } = usePedidos();
+  const { pedidos, pedidosCliente, loading, error, fetchPedidosByStore, fetchPedidos, fetchPedidosCliente } = usePedidos();
   const router = useRouter();
   const params = useLocalSearchParams();
   const estado = params.estado ? parseInt(params.estado as string) : undefined;
+  const storeId = params.storeId ? parseInt(params.storeId as string) : null;
+  const activeTab = params.tab as string | undefined;
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
@@ -70,13 +68,15 @@ export default function PedidosScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (isDueno) {
-        fetchPedidos();
-        fetchPedidosCliente();
-      } else {
-        fetchPedidosCliente();
+      if (storeId) {
+        fetchPedidosByStore(storeId, estado);
+        return;
       }
-    }, [isDueno, fetchPedidos, fetchPedidosCliente])
+      if (activeTab !== 'compras') {
+        fetchPedidos();
+      }
+      fetchPedidosCliente();
+    }, [storeId, estado, activeTab, fetchPedidosByStore, fetchPedidos, fetchPedidosCliente])
   );
 
   const filterByEstado = useCallback(
@@ -84,24 +84,17 @@ export default function PedidosScreen() {
     [estado]
   );
 
-  const sections = useMemo(() => {
-    if (!isDueno) return [];
+  const pedidosFiltrados = useMemo(
+    () => filterByEstado(pedidos),
+    [pedidos, filterByEstado]
+  );
 
-    const result: PedidoSection[] = [];
+  const clienteFiltrados = useMemo(
+    () => filterByEstado(pedidosCliente),
+    [pedidosCliente, filterByEstado]
+  );
 
-    const clienteFiltrados = filterByEstado(pedidosCliente);
-    if (clienteFiltrados.length > 0) {
-      result.push({ title: 'Mis Compras', data: clienteFiltrados, isComercio: false });
-    }
-
-    const duenoFiltrados = filterByEstado(pedidos);
-    const comercioSections = groupByComercio(duenoFiltrados);
-    result.push(...comercioSections);
-
-    return result;
-  }, [isDueno, pedidos, pedidosCliente, filterByEstado]);
-
-  const clienteFiltrados = useMemo(() => filterByEstado(pedidosCliente), [pedidosCliente, filterByEstado]);
+  const showSoloCompras = activeTab === 'compras' || (!storeId && !isDueno);
 
   if (loading) {
     return (
@@ -111,7 +104,7 @@ export default function PedidosScreen() {
     );
   }
 
-  if (!isDueno) {
+  if (showSoloCompras) {
     return (
       <ThemedView style={styles.container}>
         {error && <Text style={styles.error}>{error}</Text>}
@@ -139,7 +132,7 @@ export default function PedidosScreen() {
                 onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
                 <View style={styles.clientPedidoHeader}>
                   <Text style={[styles.clientPedidoId, { color: C.text }]}>Pedido #{item.id}</Text>
-                  <View style={[styles.miniBadge, getBadgeColor(item.estado)]}>
+                  <View style={[styles.miniBadge, getBadgeColor(item.estado, scheme)]}>
                     <Text style={styles.miniBadgeText}>{getEstadoNombre(item.estado)}</Text>
                   </View>
                 </View>
@@ -164,14 +157,27 @@ export default function PedidosScreen() {
                 </View>
               </TouchableOpacity>
             )}
-          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
-          stickySectionHeadersEnabled={false}
-          contentContainerStyle={styles.listContent}
-        />
-      )}
-    </ThemedView>
-  );
-}
+            ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+            stickySectionHeadersEnabled={false}
+            contentContainerStyle={styles.listContent}
+          />
+        )}
+      </ThemedView>
+    );
+  }
+
+  const sections: PedidoSection[] = storeId
+    ? groupByComercio(pedidosFiltrados)
+    : (() => {
+        const result: PedidoSection[] = [];
+        const compras = clienteFiltrados;
+        if (compras.length > 0) {
+          result.push({ title: 'Mis Compras', data: compras, isComercio: false });
+        }
+        const tiendaSections = groupByComercio(pedidosFiltrados);
+        result.push(...tiendaSections);
+        return result;
+      })();
 
   return (
     <ThemedView style={styles.container}>
@@ -179,6 +185,7 @@ export default function PedidosScreen() {
 
       {sections.length === 0 ? (
         <View style={styles.emptyState}>
+          <IconSymbol size={64} pack="material" name="receipt-long" color={C.icon} />
           <Text style={styles.emptyStateText}>
             {estado ? 'No hay pedidos en este estado' : 'No hay pedidos'}
           </Text>
@@ -208,7 +215,7 @@ export default function PedidosScreen() {
                 onPress={() => router.push(`/pedido-detalle?id=${item.id}`)}>
                 <View style={styles.clientPedidoHeader}>
                   <Text style={[styles.clientPedidoId, { color: C.text }]}>Pedido #{item.id}</Text>
-                  <View style={[styles.miniBadge, getBadgeColor(item.estado)]}>
+                  <View style={[styles.miniBadge, getBadgeColor(item.estado, scheme)]}>
                     <Text style={styles.miniBadgeText}>{getEstadoNombre(item.estado)}</Text>
                   </View>
                 </View>
