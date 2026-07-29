@@ -36,6 +36,7 @@ async function ensureUserId(email: string): Promise<number | null> {
       .from('users')
       .select('user_id')
       .eq('email', email)
+      .limit(1)
       .maybeSingle();
 
     console.log('[ENSURE_USER_ID] find result:', existing, 'error:', JSON.stringify(findErr));

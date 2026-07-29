@@ -1,5 +1,6 @@
 import { ProductCard } from '@/components/ProductCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -28,6 +29,7 @@ export default function CatalogScreen() {
   const params = useLocalSearchParams<{ modo?: string }>();
   const { isDueno } = useAuth();
   const { addItem, getSummary } = useCart();
+  const { show: showToast } = useToast();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { productos, loading, fetchProductos, deleteProducto } = useProductos();
@@ -285,7 +287,15 @@ export default function CatalogScreen() {
         {
           text: 'Eliminar',
           style: 'destructive',
-          onPress: () => deleteProducto(product.id),
+          onPress: async () => {
+            try {
+              await deleteProducto(product.id);
+              showToast('Producto eliminado', 'success');
+              fetchProductos();
+            } catch (err) {
+              showToast(err instanceof Error ? err.message : 'Error al eliminar', 'error');
+            }
+          },
         },
       ]
     );

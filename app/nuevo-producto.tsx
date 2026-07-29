@@ -11,7 +11,7 @@ import { ActivityIndicator, Image, StyleSheet, Text, TextInput, TouchableOpacity
 
 export default function NuevoProductoScreen() {
   const params = useLocalSearchParams();
-  const comercioId = params.comercio_id ? Number(params.comercio_id) : 1;
+  const comercioId = Number(params.comercio_id);
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState('');
@@ -42,6 +42,7 @@ export default function NuevoProductoScreen() {
   const handleCreate = async () => {
     if (!nombre.trim()) { showToast('Debe ingresar un nombre', 'error'); return; }
     if (!precio.trim() || isNaN(Number(precio))) { showToast('Debe ingresar un precio válido', 'error'); return; }
+    if (!comercioId || isNaN(comercioId)) { showToast('Error: comercio no identificado', 'error'); return; }
     try {
       setLoading(true);
       let imagenUrl: string | null = null;

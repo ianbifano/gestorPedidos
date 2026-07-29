@@ -73,6 +73,8 @@ export default function RootLayout() {
               <Stack.Screen name="crear-comercio" options={{ headerTitle: 'Crear Comercio', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="editar-comercio" options={{ headerTitle: 'Editar Comercio', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="nuevo-producto" options={{ headerTitle: 'Nuevo Producto', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="crear-producto" options={{ headerTitle: 'Crear Producto', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="editar-producto" options={{ headerTitle: 'Editar Producto', presentation: 'modal', animationEnabled: true }} />
             </Stack>
           </AuthGuard>
         </ToastProvider>
