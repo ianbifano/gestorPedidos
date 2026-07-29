@@ -2,7 +2,9 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { ComerciosProvider } from '@/contexts/ComerciosContext';
 import { EstadosProvider } from '@/contexts/EstadosContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -38,7 +40,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <ThemeProvider>
       <CartProvider>
+        <ComerciosProvider>
         <ToastProvider>
           <AuthGuard>
             <Stack
@@ -72,7 +76,9 @@ export default function RootLayout() {
             </Stack>
           </AuthGuard>
         </ToastProvider>
+        </ComerciosProvider>
       </CartProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }

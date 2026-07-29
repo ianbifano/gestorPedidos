@@ -180,7 +180,7 @@ function createStyles(C: typeof Colors.light) {
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     buttonCancel: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: C.border },
     buttonCancelText: { color: C.tint, fontSize: 16, fontWeight: '600' },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10, fontSize: 13 },
+    error: { color: C.danger, padding: 10, backgroundColor: C.danger + '18', borderRadius: 8, marginBottom: 10, fontSize: 13 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: C.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '80%' },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: C.text },

@@ -258,7 +258,7 @@ function createStyles(C: typeof Colors.light) {
     emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 60 },
     emptyStateText: { fontSize: 16, color: C.icon, marginTop: 12, marginBottom: 6 },
     emptyStateSubtext: { fontSize: 13, textAlign: 'center', paddingHorizontal: 30 },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
+    error: { color: C.danger, padding: 10, backgroundColor: C.danger + '18', borderRadius: 8, marginBottom: 10 },
     sectionHeader: {
       flexDirection: 'row',
       alignItems: 'center',

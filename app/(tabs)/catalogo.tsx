@@ -7,7 +7,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProductos } from '@/hooks/use-productos';
 import { Producto } from '@/types/producto';
 import { useFocusEffect } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
@@ -25,6 +25,7 @@ import {
 
 export default function CatalogScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ modo?: string }>();
   const { isDueno } = useAuth();
   const { addItem, getSummary } = useCart();
   const colorScheme = useColorScheme();
@@ -33,9 +34,11 @@ export default function CatalogScreen() {
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
-  const isOwner = isDueno;
+  const [customerMode, setCustomerMode] = useState(params.modo === 'cliente');
   const { width: screenWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
+
+  const isOwner = isDueno && !customerMode;
 
   const gap = 12;
   const horizontalPadding = isWeb ? 32 : 16;
@@ -101,6 +104,39 @@ export default function CatalogScreen() {
     headerSubtitle: {
       fontSize: 13,
       color: colors.icon,
+    },
+    modeToggle: {
+      flexDirection: 'row',
+      marginHorizontal: 16,
+      marginTop: 10,
+      backgroundColor: colors.lightGray,
+      borderRadius: 8,
+      padding: 3,
+    },
+    modeOption: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      paddingVertical: 7,
+      borderRadius: 6,
+    },
+    modeOptionActive: {
+      backgroundColor: colors.card,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    modeOptionText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: colors.icon,
+    },
+    modeOptionTextActive: {
+      color: colors.text,
     },
     searchContainer: {
       flexDirection: 'row',
@@ -287,6 +323,27 @@ export default function CatalogScreen() {
           {isOwner ? 'Administrá tu catálogo de productos' : 'Selecciona los productos que deseas'}
         </Text>
       </View>
+
+      {isDueno && (
+        <View style={styles.modeToggle}>
+          <Pressable
+            style={[styles.modeOption, !customerMode && styles.modeOptionActive]}
+            onPress={() => setCustomerMode(false)}>
+            <IconSymbol size={15} pack="material" name="edit" color={!customerMode ? colors.tint : colors.icon} />
+            <Text style={[styles.modeOptionText, !customerMode && styles.modeOptionTextActive]}>
+              Gestión
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.modeOption, customerMode && styles.modeOptionActive]}
+            onPress={() => setCustomerMode(true)}>
+            <IconSymbol size={15} pack="material" name="shopping-bag" color={customerMode ? colors.tint : colors.icon} />
+            <Text style={[styles.modeOptionText, customerMode && styles.modeOptionTextActive]}>
+              Compra
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
       {productos.length > 0 && (
         <View style={styles.searchContainer}>

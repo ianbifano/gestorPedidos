@@ -96,6 +96,6 @@ function createStyles(C: typeof Colors.light) {
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     emptyStateText: { fontSize: 16, color: C.icon },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
+    error: { color: C.danger, padding: 10, backgroundColor: C.danger + '18', borderRadius: 8, marginBottom: 10 },
   });
 }

@@ -1,51 +1,57 @@
-import { ThemedView } from '@/components/themed-view';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors, StateColors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEstados } from '@/contexts/EstadosContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useComercios } from '@/hooks/use-comercios';
 import { usePedidos } from '@/hooks/use-pedidos';
-import { useEstados } from '@/contexts/EstadosContext';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    ActivityIndicator,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
+} from 'react-native';
 
 export default function DashboardScreen() {
-  const { user, isDueno } = useAuth();
-  const { comercios, loading: loadingComercios } = useComercios();
-  const { pedidos, pedidosCliente, loading, error, fetchPedidosByStore, fetchPedidos, resumenPorEstado } = usePedidos();
-  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-  const router = useRouter();
-  const scheme = useColorScheme() ?? 'light';
-  const C = Colors[scheme];
-  const styles = useMemo(() => createStyles(C), [C]);
+  const { user } = useAuth();
+  const { comercios, loading: loadingComercios, fetchComercios } = useComercios();
+  const { pedidos, pedidosCliente, loading, fetchPedidosByStore, fetchPedidos, resumenPorEstado } = usePedidos();
   const { estados, getEstadoNombre } = useEstados();
+  const scheme = useColorScheme();
+  const C = Colors[scheme];
+  const S = styles(C);
+  const router = useRouter();
+  const email = user?.email ?? '';
+  const username = user?.user_metadata?.username ?? email.split('@')[0];
   const tieneComercios = comercios.length > 0;
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
 
   const activeStore = useMemo(
     () => comercios.find((c) => c.id === selectedStoreId) ?? null,
     [comercios, selectedStoreId]
   );
 
-  const initialized = useRef(false);
-
   useEffect(() => {
-    if (initialized.current) return;
-    if (tieneComercios && comercios.length > 0) {
-      initialized.current = true;
+    if (tieneComercios && comercios.length > 0 && selectedStoreId === null) {
       setSelectedStoreId(comercios[0].id);
       fetchPedidosByStore(comercios[0].id);
     }
-  }, [tieneComercios, comercios, fetchPedidosByStore]);
+  }, [tieneComercios, comercios, selectedStoreId, fetchPedidosByStore]);
 
   useFocusEffect(
     useCallback(() => {
+      fetchComercios();
       if (selectedStoreId) {
         fetchPedidosByStore(selectedStoreId);
       } else {
         fetchPedidos();
       }
-    }, [selectedStoreId, fetchPedidosByStore, fetchPedidos])
+    }, [selectedStoreId, fetchPedidosByStore, fetchPedidos, fetchComercios])
   );
 
   const pedidosFiltrados = useMemo(() => {
@@ -74,285 +80,507 @@ export default function DashboardScreen() {
     fetchPedidosByStore(storeId);
   }, [fetchPedidosByStore]);
 
-  if (loading || loadingComercios) {
+  if (loadingComercios) {
     return (
-      <ThemedView style={styles.container}>
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={C.tint} />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!tieneComercios) {
     return (
-      <ScrollView style={styles.scrollContainer}>
-        <ThemedView style={styles.container}>
-          <View style={styles.welcomeContainer}>
-            <View style={[styles.avatarCircle, { backgroundColor: C.tint }]}>
-              <IconSymbol size={48} pack="material" name="person" color="#FFFFFF" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+        <ScrollView contentContainerStyle={S.scrollContent}>
+          <View style={S.headerSection}>
+            <View style={[S.avatarCircle, { borderColor: C.border }]}>
+              <IconSymbol size={44} pack="material" name="person" color={C.icon} />
             </View>
-            <Text style={[styles.welcomeTitle, { color: C.text }]}>Hola, {user?.user_metadata?.username || user?.email?.split('@')[0]}</Text>
-            <Text style={[styles.welcomeSubtitle, { color: C.icon }]}>
-              Todavía no tenés un comercio registrado.
-            </Text>
-            <Text style={[styles.welcomeDescription, { color: C.icon }]}>
-              Creá tu comercio para empezar a vender y gestionar tus pedidos.
+            <Text style={S.greeting}>{username}</Text>
+            <Text style={S.email}>{email}</Text>
+          </View>
+
+          <View style={S.messageCard}>
+            <IconSymbol size={28} pack="material" name="store" color={C.icon} />
+            <Text style={S.messageTitle}>Todavía no tenés un comercio</Text>
+            <Text style={S.messageBody}>
+              Crea tu primer comercio para empezar a vender y gestionar tus pedidos, o ingresá como cliente para explorar productos.
             </Text>
           </View>
 
-          <View style={[styles.infoCard, { backgroundColor: C.card, borderColor: C.border }]}>
-            <IconSymbol size={28} pack="material" name="store" color={C.tint} />
-            <View style={styles.infoCardContent}>
-              <Text style={[styles.infoCardTitle, { color: C.text }]}>Tu cuenta</Text>
-              <Text style={[styles.infoCardText, { color: C.icon }]}>{user?.email}</Text>
+          <Pressable
+            style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(0,122,255,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+            onPress={() => router.push('/(tabs)/catalogo?modo=cliente')}>
+            <View style={[S.optionIconContainer, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+              <IconSymbol size={28} pack="material" name="shopping-bag" color={C.tint} />
             </View>
-          </View>
+            <View style={S.optionContent}>
+              <Text style={S.optionTitle}>Ingresar como Cliente</Text>
+              <Text style={S.optionSubtitle}>Explorá productos y realizá compras</Text>
+            </View>
+            <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+          </Pressable>
 
-          <TouchableOpacity
-            style={[styles.buttonPrimary, { backgroundColor: C.tint }]}
+          <Pressable
+            style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(255,149,0,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
             onPress={() => router.push('/crear-comercio')}>
-            <IconSymbol size={20} pack="material" name="add-business" color="#FFFFFF" />
-            <Text style={styles.buttonText}>+ Crear mi comercio</Text>
-          </TouchableOpacity>
-        </ThemedView>
-      </ScrollView>
+            <View style={[S.optionIconContainer, { backgroundColor: 'rgba(255,149,0,0.15)' }]}>
+              <IconSymbol size={28} pack="material" name="add-business" color={C.accent} />
+            </View>
+            <View style={S.optionContent}>
+              <Text style={[S.optionTitle, { color: C.accent }]}>+ Crear mi Comercio</Text>
+              <Text style={S.optionSubtitle}>Registrá tu negocio y empezá a vender</Text>
+            </View>
+            <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView style={styles.scrollContainer}>
-      <ThemedView style={styles.container}>
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <View style={styles.storeSelectorContainer}>
-          <IconSymbol size={18} pack="material" name="store" color={C.tint} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storeSelectorScroll}>
-            <TouchableOpacity
-              style={[
-                styles.storeChip,
-                selectedStoreId === null && { backgroundColor: C.tint },
-                selectedStoreId !== null && { backgroundColor: C.lightGray, borderWidth: 1, borderColor: C.border },
-              ]}
-              onPress={() => {
-                setSelectedStoreId(null);
-                fetchPedidos();
-              }}
-            >
-              <Text style={[
-                styles.storeChipText,
-                selectedStoreId === null ? { color: '#FFFFFF' } : { color: C.text },
-              ]}>
-                Todos
-              </Text>
-            </TouchableOpacity>
-            {comercios.map((c) => {
-              const isActive = c.id === selectedStoreId;
-              return (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[
-                    styles.storeChip,
-                    isActive && { backgroundColor: C.tint },
-                    !isActive && { backgroundColor: C.lightGray, borderWidth: 1, borderColor: C.border },
-                  ]}
-                  onPress={() => handleStoreChange(c.id)}
-                >
-                  <Text style={[
-                    styles.storeChipText,
-                    isActive ? { color: '#FFFFFF' } : { color: C.text },
-                  ]}>
-                    {c.nombre}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-          <TouchableOpacity
-            style={styles.storeManageBtn}
-            onPress={() => router.push('/comercios')}
-          >
-            <IconSymbol size={20} pack="material" name="settings" color={C.icon} />
-          </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+      <ScrollView contentContainerStyle={S.scrollContent}>
+        <View style={S.headerSection}>
+          <View style={[S.avatarCircle, { borderColor: C.border }]}>
+            <IconSymbol size={44} pack="material" name="person" color={C.icon} />
+          </View>
+          <Text style={S.greeting}>{username}</Text>
+          <Text style={S.email}>{email}</Text>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={[styles.statCard, { backgroundColor: C.card, borderWidth: 1, borderColor: C.border }]}>
-            <Text style={[styles.statNumber, { color: C.tint }]}>{stats.total}</Text>
-            <Text style={[styles.statLabel, { color: C.icon }]}>Total</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: C.card, borderWidth: 1, borderColor: C.border }]}>
-            <Text style={[styles.statNumber, { color: '#66BB6A' }]}>{stats.entregados}</Text>
-            <Text style={[styles.statLabel, { color: C.icon }]}>Entregados</Text>
-          </View>
-          <View style={[styles.statCard, { backgroundColor: C.card, borderWidth: 1, borderColor: C.border }]}>
-            <Text style={[styles.statNumber, { color: C.icon, fontSize: 16 }]}>${stats.montoTotal.toLocaleString('es-AR')}</Text>
-            <Text style={[styles.statLabel, { color: C.icon }]}>Vendido</Text>
-          </View>
+        <View style={S.sectionHeader}>
+          <IconSymbol size={18} pack="material" name="store" color={C.accent} />
+          <Text style={S.sectionTitle}>Mis Comercios</Text>
+          <Text style={S.sectionCount}>{comercios.length}</Text>
         </View>
 
-        <View style={styles.cardContainer}>
-          {estados.map((est) => {
-            const count = selectedStoreId
-              ? resumenPorEstado(est.id, selectedStoreId)
-              : resumenPorEstado(est.id);
-            const sc = StateColors[est.id];
-            const bgColor = scheme === 'dark' ? sc.dark : sc.light;
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={S.comercioScroll}>
+          {comercios.map((comercio) => {
+            const isActive = comercio.id === selectedStoreId;
             return (
-              <TouchableOpacity
-                key={est.id}
-                style={[styles.card, { backgroundColor: bgColor + '22' }]}
-                onPress={() => {
-                  const params = `estado=${est.id}` + (selectedStoreId ? `&storeId=${selectedStoreId}` : '');
-                  router.push(`/(tabs)/explore?${params}` as any);
-                }}>
-                <Text style={[styles.cardNumber, { color: bgColor }]}>{count}</Text>
-                <Text style={[styles.cardLabel, { color: C.text }]}>{est.nombre}</Text>
-              </TouchableOpacity>
+              <Pressable
+                key={comercio.id}
+                style={({ pressed }) => [
+                  S.comercioChip,
+                  isActive && S.comercioChipActive,
+                  !isActive && { backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={() => handleStoreChange(comercio.id)}>
+                <IconSymbol
+                  size={16}
+                  pack="material"
+                  name="storefront"
+                  color={isActive ? '#FFFFFF' : C.icon}
+                />
+                <Text style={[S.comercioChipText, isActive && { color: '#FFFFFF' }]}>
+                  {comercio.nombre}
+                </Text>
+              </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Últimos Pedidos</Text>
-            <TouchableOpacity onPress={() => {
-              const params = selectedStoreId ? `?storeId=${selectedStoreId}` : '';
-              router.push(`/(tabs)/explore${params}` as any);
-            }}>
-              <Text style={styles.seeAll}>Ver todos →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {ultimosPedidos.length === 0 ? (
-            <Text style={styles.emptyText}>No hay pedidos en este comercio</Text>
-          ) : (
-            <View style={styles.pedidosList}>
-              {ultimosPedidos.map((pedido) => (
-                <TouchableOpacity
-                  key={pedido.id}
-                  style={styles.pedidoItem}
-                  onPress={() => router.push(`/pedido-detalle?id=${pedido.id}`)}>
-                  <View style={styles.pedidoHeader}>
-                    <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
-                    <View style={[styles.miniBadge, { backgroundColor: (StateColors[pedido.estado]?.[scheme === 'dark' ? 'dark' : 'light']) || '#999' }]}>
-                      <Text style={styles.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.pedidoCliente}>{pedido.cliente?.nombre}</Text>
-                  <View style={styles.pedidoFooter}>
-                    <Text style={styles.pedidoMonto}>${pedido.monto.toFixed(2)}</Text>
-                    <Text style={styles.pedidoDate}>
-                      {new Date(pedido.created_at).toLocaleDateString('es-AR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+        {activeStore && (
+          <>
+            {loading && (
+              <View style={S.dashboardLoading}>
+                <ActivityIndicator size="small" color={C.tint} />
+                <Text style={S.dashboardLoadingText}>Cargando pedidos...</Text>
+              </View>
+            )}
+            <View style={S.statsRow}>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.tint }]}>{stats.total}</Text>
+                <Text style={S.statLabel}>Total</Text>
+              </View>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.success }]}>{stats.entregados}</Text>
+                <Text style={S.statLabel}>Entregados</Text>
+              </View>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.accent, fontSize: 14 }]}>
+                  ${stats.montoTotal.toLocaleString('es-AR')}
+                </Text>
+                <Text style={S.statLabel}>Vendido</Text>
+              </View>
             </View>
-          )}
-        </View>
 
-        {isDueno && pedidosCliente.length > 0 && (
-          <TouchableOpacity
-            style={styles.misComprasBanner}
-            onPress={() => router.push('/(tabs)/explore?tab=compras')}
-          >
-            <IconSymbol size={20} pack="material" name="shopping-bag" color={C.tint} />
-            <Text style={[styles.misComprasText, { color: C.tint }]}>
-              Mis Compras ({pedidosCliente.length})
-            </Text>
-            <IconSymbol size={16} pack="material" name="chevron-right" color={C.tint} />
-          </TouchableOpacity>
+            <View style={S.estadosGrid}>
+              {estados.map((est) => {
+                const count = resumenPorEstado(est.id, selectedStoreId);
+                const sc = StateColors[est.id];
+                const bgColor = scheme === 'dark' ? sc.dark : sc.light;
+                return (
+                  <Pressable
+                    key={est.id}
+                    style={[S.estadoCard, { backgroundColor: bgColor + '22' }]}
+                    onPress={() => {
+                      router.push(`/(tabs)/explore?estado=${est.id}&comercio_id=${selectedStoreId}` as any);
+                    }}>
+                    <Text style={[S.estadoNumber, { color: bgColor }]}>{count}</Text>
+                    <Text style={S.estadoLabel}>{est.nombre}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={S.sectionBlock}>
+              <View style={S.sectionHeaderRow}>
+                <Text style={S.sectionBlockTitle}>Últimos Pedidos</Text>
+                <Pressable onPress={() => router.push(`/(tabs)/explore?comercio_id=${selectedStoreId}` as any)}>
+                  <Text style={S.seeAllText}>Ver todos →</Text>
+                </Pressable>
+              </View>
+
+              {ultimosPedidos.length === 0 ? (
+                <Text style={S.emptyText}>No hay pedidos en este comercio</Text>
+              ) : (
+                <View style={S.pedidosList}>
+                  {ultimosPedidos.map((pedido) => (
+                    <Pressable
+                      key={pedido.id}
+                      style={({ pressed }) => [S.pedidoItem, pressed && { opacity: 0.9 }]}
+                      onPress={() => router.push(`/pedido-detalle?id=${pedido.id}` as any)}>
+                      <View style={S.pedidoHeader}>
+                        <Text style={S.pedidoId}>Pedido #{pedido.id}</Text>
+                        <View style={[S.miniBadge, { backgroundColor: (StateColors[pedido.estado]?.[scheme === 'dark' ? 'dark' : 'light']) || '#999' }]}>
+                          <Text style={S.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
+                        </View>
+                      </View>
+                      <Text style={S.pedidoCliente}>{pedido.cliente?.nombre}</Text>
+                      <View style={S.pedidoFooter}>
+                        <Text style={S.pedidoMonto}>${pedido.monto.toFixed(2)}</Text>
+                        <Text style={S.pedidoDate}>
+                          {new Date(pedido.created_at).toLocaleDateString('es-AR', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
         )}
 
-        <TouchableOpacity
-          style={styles.buttonSecondary}
-          onPress={() => router.push('/comercios')}>
-          <IconSymbol size={16} pack="material" name="store" color={C.tint} />
-          <Text style={styles.buttonTextSecondary}>Administrar Comercios</Text>
-        </TouchableOpacity>
-      </ThemedView>
-    </ScrollView>
+        <View style={S.divider} />
+
+        <Pressable
+          style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(0,122,255,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+          onPress={() => router.push('/(tabs)/catalogo?modo=cliente')}>
+          <View style={[S.optionIconContainer, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+            <IconSymbol size={28} pack="material" name="shopping-bag" color={C.tint} />
+          </View>
+          <View style={S.optionContent}>
+            <Text style={S.optionTitle}>Ir a Comprar</Text>
+            <Text style={S.optionSubtitle}>Navegá el catálogo como cliente</Text>
+          </View>
+          <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [S.addComercioBtn, pressed && { opacity: 0.8 }]}
+          onPress={() => router.push('/crear-comercio')}>
+          <IconSymbol size={18} pack="material" name="add" color={C.icon} />
+          <Text style={S.addComercioText}>Agregar otro comercio</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-function createStyles(C: typeof Colors.light) {
-  return StyleSheet.create({
-    scrollContainer: { flex: 1 },
-    container: { padding: 20 },
-    welcomeContainer: { alignItems: 'center', marginTop: 40, marginBottom: 30 },
-    avatarCircle: { width: 96, height: 96, borderRadius: 48, justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-    welcomeTitle: { fontSize: 22, fontWeight: '700', marginBottom: 8 },
-    welcomeSubtitle: { fontSize: 16, fontWeight: '500', marginBottom: 4 },
-    welcomeDescription: { fontSize: 14, textAlign: 'center', paddingHorizontal: 20 },
-    infoCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, marginBottom: 24 },
-    infoCardContent: { flex: 1 },
-    infoCardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
-    infoCardText: { fontSize: 13 },
-    storeSelectorContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 16,
-    },
-    storeSelectorScroll: { flex: 1 },
-    storeChip: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      borderRadius: 20,
-      marginRight: 8,
-    },
-    storeChipText: { fontSize: 14, fontWeight: '600' },
-    storeManageBtn: { padding: 4 },
-    statsRow: {
-      flexDirection: 'row',
-      gap: 10,
-      marginBottom: 16,
-    },
-    statCard: {
-      flex: 1,
-      padding: 14,
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    statNumber: { fontSize: 20, fontWeight: '800', marginBottom: 4 },
-    statLabel: { fontSize: 12, fontWeight: '500' },
-    cardContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 12, gap: 8 },
-    card: { width: '31%', paddingVertical: 16, paddingHorizontal: 8, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    cardNumber: { fontSize: 24, fontWeight: 'bold', marginBottom: 4 },
-    cardLabel: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
-    section: { marginVertical: 16 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: 'bold', color: C.text },
-    seeAll: { fontSize: 14, color: C.tint, fontWeight: '600' },
-    pedidosList: { gap: 10 },
-    pedidoItem: { backgroundColor: C.card, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: C.border },
-    pedidoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    pedidoId: { fontSize: 14, fontWeight: 'bold', color: C.text },
-    miniBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-    miniBadgeText: { color: 'white', fontSize: 10, fontWeight: '700' },
-    pedidoCliente: { fontSize: 13, color: C.icon, marginBottom: 6 },
-    pedidoFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
-    pedidoMonto: { fontSize: 14, fontWeight: 'bold', color: C.tint },
-    pedidoDate: { fontSize: 12, color: C.icon },
-    emptyText: { fontSize: 14, color: C.icon, textAlign: 'center', paddingVertical: 20 },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
-    buttonPrimary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, marginTop: 20 },
-    buttonSecondary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.lightGray, paddingVertical: 14, borderRadius: 12, marginTop: 10 },
-    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-    buttonTextSecondary: { color: C.tint, fontSize: 15, fontWeight: '600' },
-    misComprasBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 8,
-      paddingVertical: 14,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: C.tint,
-      marginTop: 8,
-    },
-    misComprasText: { fontSize: 15, fontWeight: '600' },
-  });
-}
+const styles = (C: typeof Colors.light) => StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: C.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 2,
+  },
+  greeting: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: C.text,
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 13,
+    color: C.textSecondary,
+  },
+  messageCard: {
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: C.border,
+    gap: 10,
+  },
+  messageTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: C.text,
+    textAlign: 'center',
+  },
+  messageBody: {
+    fontSize: 13,
+    color: C.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    flex: 1,
+  },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.textSecondary,
+    backgroundColor: C.card,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  comercioScroll: {
+    marginBottom: 16,
+  },
+  comercioChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  comercioChipActive: {
+    backgroundColor: C.tint,
+  },
+  comercioChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSecondary,
+  },
+  estadosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  estadoCard: {
+    width: '31%',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  estadoNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  estadoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.text,
+    textAlign: 'center',
+  },
+  sectionBlock: {
+    marginBottom: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionBlockTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: C.tint,
+    fontWeight: '600',
+  },
+  pedidosList: {
+    gap: 10,
+  },
+  pedidoItem: {
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  pedidoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  pedidoId: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.text,
+  },
+  miniBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  miniBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pedidoCliente: {
+    fontSize: 13,
+    color: C.textSecondary,
+    marginBottom: 6,
+  },
+  pedidoFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  pedidoMonto: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.accent,
+  },
+  pedidoDate: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
+  dashboardLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  dashboardLoadingText: {
+    fontSize: 13,
+    color: C.textSecondary,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: C.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginVertical: 20,
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 18,
+    gap: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  optionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionContent: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: 2,
+  },
+  optionSubtitle: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
+  addComercioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderStyle: 'dashed',
+  },
+  addComercioText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+});

@@ -192,9 +192,9 @@ export default function ComercioDetalleScreen() {
               <IconSymbol size={18} pack="material" name="edit" color={C.tint} />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.headerActionButton, { backgroundColor: '#FFEBEE' }]}
+              style={[styles.headerActionButton, { backgroundColor: C.danger + '22' }]}
               onPress={handleDeleteComercio}>
-              <IconSymbol size={18} pack="material" name="delete" color="#C62828" />
+              <IconSymbol size={18} pack="material" name="delete" color={C.danger} />
             </TouchableOpacity>
           </View>
         </View>

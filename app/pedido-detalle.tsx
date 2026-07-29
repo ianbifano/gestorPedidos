@@ -216,7 +216,7 @@ export default function PedidoDetalleScreen() {
                       </View>
                     )}
                     {!isActive && isPast && (
-                      <IconSymbol size={16} pack="material" name="check-circle" color="#66BB6A" />
+                      <IconSymbol size={16} pack="material" name="check-circle" color={C.success} />
                     )}
                   </TouchableOpacity>
                 );
@@ -232,7 +232,7 @@ export default function PedidoDetalleScreen() {
                   <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Editar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: '#F44336' }]}
+                  style={[styles.actionButton, { backgroundColor: C.danger }]}
                   onPress={() => {
                     Alert.alert(
                       'Eliminar Pedido',

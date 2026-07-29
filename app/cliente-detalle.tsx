@@ -1,6 +1,6 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
-import { Colors } from '@/constants/theme';
+import { Colors, StateColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useClientes } from '@/hooks/use-clientes';
 import { usePedidos } from '@/hooks/use-pedidos';
@@ -142,7 +142,7 @@ export default function ClienteDetalleScreen() {
                   onPress={() => router.push(`/pedido-detalle?id=${pedido.id}`)}>
                   <View style={styles.pedidoHeader}>
                     <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
-                    <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
+                    <View style={[styles.miniBadge, { backgroundColor: (StateColors[pedido.estado]?.[scheme === 'dark' ? 'dark' : 'light']) || C.icon }]}>
                       <Text style={styles.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
                     </View>
                   </View>
@@ -180,14 +180,7 @@ export default function ClienteDetalleScreen() {
   );
 }
 
-const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D', 2: '#42A5F5', 3: '#FF7043',
-  4: '#EF5350', 5: '#AB47BC', 6: '#66BB6A',
-};
 
-function getBadgeColor(estado: number) {
-  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
-}
 
 function createStyles(C: typeof Colors.light) {
   return StyleSheet.create({
@@ -219,9 +212,9 @@ function createStyles(C: typeof Colors.light) {
     actionButtons: { flexDirection: 'row', gap: 10 },
     actionButton: { flex: 1, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     editButton: { backgroundColor: C.lightGray, borderWidth: 1, borderColor: C.tint },
-    deleteButton: { backgroundColor: C.lightGray, borderWidth: 1, borderColor: '#F44336' },
+    deleteButton: { backgroundColor: C.lightGray, borderWidth: 1, borderColor: C.danger },
     actionButtonText: { fontSize: 14, fontWeight: '600', color: C.tint },
-    deleteButtonText: { fontSize: 14, fontWeight: '600', color: '#F44336' },
+    deleteButtonText: { fontSize: 14, fontWeight: '600', color: C.danger },
     notFound: { fontSize: 16, color: C.icon, textAlign: 'center', marginBottom: 20 },
     button: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },

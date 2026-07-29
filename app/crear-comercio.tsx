@@ -27,11 +27,14 @@ export default function CrearComercioScreen() {
 
     try {
       setLoading(true);
-      await createComercio(nombre.trim());
+      console.log('[CREAR_COMERCIO] calling createComercio with:', nombre.trim());
+      const nuevo = await createComercio(nombre.trim());
+      console.log('[CREAR_COMERCIO] createComercio OK, data:', nuevo);
       showToast('✓ Comercio creado correctamente', 'success');
       router.back();
     } catch (err) {
       const mensajeError = err instanceof Error ? err.message : (error || 'No se pudo crear el comercio');
+      console.error('[CREAR_COMERCIO] ERROR:', mensajeError);
       showToast(mensajeError, 'error');
     } finally {
       setLoading(false);
@@ -73,6 +76,6 @@ function createStyles(C: typeof Colors.light) {
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     buttonCancel: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: C.border },
     buttonCancelText: { color: C.tint, fontSize: 16, fontWeight: '600' },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10, fontSize: 13 },
+    error: { color: C.danger, padding: 10, backgroundColor: C.danger + '18', borderRadius: 8, marginBottom: 10, fontSize: 13 },
   });
 }

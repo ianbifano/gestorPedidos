@@ -132,8 +132,8 @@ export default function ProductoDetalleScreen() {
         <View style={[styles.statusContainer, { backgroundColor: C.lightGray }]}>
           <View style={styles.statusRow}>
             <Text style={[styles.statusLabel, { color: C.text }]}>Disponibilidad:</Text>
-            <View style={[styles.statusBadge, { backgroundColor: producto.disponible ? '#E8F5E9' : '#FFEBEE' }]}>
-              <Text style={[styles.statusText, { color: producto.disponible ? '#2E7D32' : '#C62828' }]}>
+            <View style={[styles.statusBadge, { backgroundColor: producto.disponible ? C.success + '22' : C.danger + '22' }]}>
+              <Text style={[styles.statusText, { color: producto.disponible ? C.success : C.danger }]}>
                 {producto.disponible ? 'Disponible' : 'No disponible'}
               </Text>
             </View>
