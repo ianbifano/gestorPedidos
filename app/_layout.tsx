@@ -62,11 +62,8 @@ export default function RootLayout() {
               />
 
               <Stack.Screen name="crear-pedido" options={{ headerTitle: 'Crear Pedido', presentation: 'modal', animationEnabled: true }} />
-              <Stack.Screen name="crear-cliente" options={{ headerTitle: 'Crear Cliente', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="editar-pedido" options={{ headerTitle: 'Editar Pedido', presentation: 'modal', animationEnabled: true }} />
-              <Stack.Screen name="editar-cliente" options={{ headerTitle: 'Editar Cliente', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="pedido-detalle" options={{ headerTitle: 'Detalle del Pedido', presentation: 'card', animationEnabled: true }} />
-              <Stack.Screen name="cliente-detalle" options={{ headerTitle: 'Detalle del Cliente', presentation: 'card', animationEnabled: true }} />
               <Stack.Screen name="producto-detalle" options={{ headerTitle: 'Detalle del Producto', presentation: 'card', animationEnabled: true }} />
               <Stack.Screen name="comercio-detalle" options={{ headerTitle: 'Detalle del Comercio', presentation: 'card', animationEnabled: true }} />
               <Stack.Screen name="comercios" options={{ headerTitle: 'Mis Comercios', presentation: 'card', animationEnabled: true }} />

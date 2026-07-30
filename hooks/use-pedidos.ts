@@ -19,14 +19,46 @@ export function usePedidos() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const getMisComercioIds = useCallback(async (): Promise<number[]> => {
+    if (!user?.email) return [];
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('email', user.email)
+        .limit(1)
+        .maybeSingle();
+
+      if (!userData?.user_id) return [];
+
+      const { data: vinculos } = await supabase
+        .from('users_x_comercios')
+        .select('comercio_id')
+        .eq('user_id', userData.user_id);
+
+      return (vinculos ?? []).map((v) => v.comercio_id).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }, [user?.email]);
+
   const fetchPedidos = useCallback(async (estado?: number) => {
     if (!user) return;
     try {
       setLoading(true);
       setError(null);
+
+      const comercioIds = await getMisComercioIds();
+      if (comercioIds.length === 0) {
+        setPedidos([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from('pedidos')
         .select(SELECT_QUERY)
+        .in('comercio_id', comercioIds)
         .order('created_at', { ascending: false });
 
       if (estado !== undefined) {
@@ -41,13 +73,21 @@ export function usePedidos() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, getMisComercioIds]);
 
   const fetchPedidosByStore = useCallback(async (storeId: number, estado?: number) => {
     if (!user) return;
     try {
       setLoading(true);
       setError(null);
+
+      const comercioIds = await getMisComercioIds();
+      if (!comercioIds.includes(storeId)) {
+        setPedidos([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from('pedidos')
         .select(SELECT_QUERY)
@@ -66,7 +106,7 @@ export function usePedidos() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, getMisComercioIds]);
 
   const fetchPedidosCliente = useCallback(async () => {
     if (!user) return;

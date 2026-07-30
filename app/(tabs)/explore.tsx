@@ -59,7 +59,7 @@ export default function PedidosScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const estado = params.estado ? parseInt(params.estado as string) : undefined;
-  const storeId = params.storeId ? parseInt(params.storeId as string) : null;
+  const storeId = params.comercio_id ? parseInt(params.comercio_id as string) : null;
   const activeTab = params.tab as string | undefined;
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
@@ -84,10 +84,16 @@ export default function PedidosScreen() {
     [estado]
   );
 
-  const pedidosFiltrados = useMemo(
-    () => filterByEstado(pedidos),
-    [pedidos, filterByEstado]
-  );
+  const pedidosFiltrados = useMemo(() => {
+    let result = pedidos;
+    if (estado !== undefined) {
+      result = result.filter((p) => p.estado === estado);
+    }
+    if (storeId) {
+      result = result.filter((p) => p.comercio_id === storeId);
+    }
+    return result;
+  }, [pedidos, estado, storeId]);
 
   const clienteFiltrados = useMemo(
     () => filterByEstado(pedidosCliente),

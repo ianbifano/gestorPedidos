@@ -2,11 +2,13 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
 import { useProductos } from '@/hooks/use-productos';
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -16,31 +18,54 @@ import {
 } from 'react-native';
 
 export default function ProductosScreen() {
-  const { productos, loading, deleteProducto } = useProductos();
+  const { productos, loading, deleteProducto, fetchProductosByComercios } = useProductos();
+  const { comercios, loading: loadingComercios, fetchComercios } = useComercios();
   const { show: showToast } = useToast();
   const router = useRouter();
   const scheme = useColorScheme();
   const C = Colors[scheme];
   const S = styles(C);
 
-  const handleDelete = async (id: number) => {
+  const comercioIds = useMemo(() => comercios.map(c => c.id), [comercios]);
+
+  useEffect(() => {
+    fetchComercios();
+  }, []);
+
+  useEffect(() => {
+    if (comercioIds.length > 0) {
+      fetchProductosByComercios(comercioIds);
+    }
+  }, [comercioIds.join(',')]);
+
+  const handleDelete = (id: number) => {
     if (!id || isNaN(id)) {
       showToast('ID inválido', 'error');
       return;
     }
 
-    const confirmar = window.confirm('¿Desea eliminar este producto?');
-    if (!confirmar) return;
-
-    try {
-      await deleteProducto(id);
-      showToast('Producto eliminado', 'success');
-    } catch {
-      showToast('Error al eliminar producto', 'error');
-    }
+    Alert.alert(
+      'Eliminar producto',
+      '¿Desea eliminar este producto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteProducto(id);
+              showToast('Producto eliminado', 'success');
+            } catch {
+              showToast('Error al eliminar producto', 'error');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  if (loading) {
+  if (loadingComercios || loading) {
     return (
       <ThemedView style={S.center}>
         <ActivityIndicator size="large" color={C.tint} />
@@ -48,9 +73,22 @@ export default function ProductosScreen() {
     );
   }
 
+  if (comercios.length === 0) {
+    return (
+      <ThemedView style={S.container}>
+        <View style={S.center}>
+          <Text style={S.emptyText}>Primero debes crear un comercio</Text>
+          <TouchableOpacity style={S.addButton} onPress={() => router.push('/crear-comercio')}>
+            <Text style={S.addButtonText}>+ Crear Comercio</Text>
+          </TouchableOpacity>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={S.container}>
-      <TouchableOpacity style={S.addButton} onPress={() => router.push('/nuevo-producto')}>
+      <TouchableOpacity style={S.addButton} onPress={() => router.push('/crear-producto')}>
         <Text style={S.addButtonText}>+ Nuevo Producto</Text>
       </TouchableOpacity>
 

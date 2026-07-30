@@ -10,7 +10,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -22,7 +21,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 const STATUS_FLOW = [1, 2, 5, 6];
 
 export default function PedidoDetalleScreen() {
-  const { updatePedido, deletePedido, fetchPedidoById } = usePedidos();
+  const { updatePedido, fetchPedidoById } = usePedidos();
   const { isDueno } = useAuth();
   const { comercios } = useComercios();
   const { show: showToast } = useToast();
@@ -223,47 +222,6 @@ export default function PedidoDetalleScreen() {
               })}
             </View>
 
-            <View style={styles.section}>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: C.tint }]}
-                  onPress={() => router.push(`/editar-pedido?id=${pedido.id}`)}>
-                  <IconSymbol size={18} pack="material" name="edit" color="#FFFFFF" />
-                  <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Editar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: C.danger }]}
-                  onPress={() => {
-                    Alert.alert(
-                      'Eliminar Pedido',
-                      '¿Estás seguro de que quieres eliminar este pedido?',
-                      [
-                        { text: 'Cancelar', onPress: () => {}, style: 'cancel' },
-                        {
-                          text: 'Eliminar',
-                          onPress: async () => {
-                            try {
-                              setLoadingUpdate(true);
-                              await deletePedido(pedido.id);
-                              showToast('✓ Pedido eliminado', 'success');
-                              router.back();
-                            } catch (err) {
-                              const mensaje = err instanceof Error ? err.message : 'No se pudo eliminar el pedido';
-                              showToast(mensaje, 'error');
-                            } finally {
-                              setLoadingUpdate(false);
-                            }
-                          },
-                          style: 'destructive',
-                        },
-                      ]
-                    );
-                  }}>
-                  <IconSymbol size={18} pack="material" name="delete" color="#FFFFFF" />
-                  <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Eliminar</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
           </>
         )}
 

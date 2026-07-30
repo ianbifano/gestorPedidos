@@ -92,15 +92,6 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="clientes"
-          options={{
-            title: 'Clientes',
-            headerTitle: 'Gestionar Clientes',
-            href: tieneComercios ? undefined : null,
-            tabBarIcon: ({ color }) => <IconSymbol size={28} pack="fontawesome" name="users" color={color} />,
-          }}
-        />
       </Tabs>
     </View>
   );

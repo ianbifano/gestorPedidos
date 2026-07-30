@@ -5,11 +5,11 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
 import { useProductos } from '@/hooks/use-productos';
 import { Producto } from '@/types/producto';
-import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -32,11 +32,13 @@ export default function CatalogScreen() {
   const { show: showToast } = useToast();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { productos, loading, fetchProductos, deleteProducto } = useProductos();
+  const { productos, loading, fetchProductos, fetchProductosByComercios, deleteProducto } = useProductos();
+  const { comercios, fetchComercios } = useComercios();
   const [showAddedToast, setShowAddedToast] = useState(false);
   const [addedProduct, setAddedProduct] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [customerMode, setCustomerMode] = useState(params.modo === 'cliente');
+  const [selectedComercioId, setSelectedComercioId] = useState<number | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
 
@@ -53,24 +55,49 @@ export default function CatalogScreen() {
 
   const cardWidth = (availableWidth - gap * (numColumns - 1)) / numColumns;
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchProductos();
-    }, [fetchProductos])
-  );
-
   const summary = getSummary();
 
+  const ownerComercios = useMemo(() => {
+    if (isDueno && comercios.length > 0) return comercios;
+    return [];
+  }, [isDueno, comercios]);
+
+  React.useEffect(() => {
+    if (isOwner) {
+      fetchComercios();
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner]);
+
+  React.useEffect(() => {
+    if (isOwner && ownerComercios.length > 0 && !selectedComercioId) {
+      setSelectedComercioId(ownerComercios[0].id);
+    }
+  }, [isOwner, ownerComercios, selectedComercioId]);
+
+  React.useEffect(() => {
+    if (isOwner && selectedComercioId) {
+      fetchProductosByComercios([selectedComercioId]);
+    }
+  }, [isOwner, selectedComercioId]);
+
   const filteredProductos = useMemo(() => {
-    if (!searchQuery.trim()) return productos;
+    let filtered = productos;
+
+    if (isOwner && selectedComercioId) {
+      filtered = filtered.filter((p) => p.comercio_id === selectedComercioId);
+    }
+
+    if (!searchQuery.trim()) return filtered;
     const query = searchQuery.toLowerCase().trim();
-    return productos.filter(
+    return filtered.filter(
       (p) =>
         p.nombre.toLowerCase().includes(query) ||
         (p.descripcion && p.descripcion.toLowerCase().includes(query)) ||
         (p.comercio?.nombre && p.comercio.nombre.toLowerCase().includes(query))
     );
-  }, [productos, searchQuery]);
+  }, [productos, searchQuery, isOwner, selectedComercioId]);
 
   const styles = StyleSheet.create({
     container: {
@@ -259,6 +286,28 @@ export default function CatalogScreen() {
       flex: 1,
       fontSize: 13,
     },
+    comercioScroll: {
+      marginHorizontal: 16,
+      marginTop: 10,
+      marginBottom: 8,
+    },
+    comercioChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 8,
+      marginRight: 8,
+    },
+    comercioChipActive: {
+      backgroundColor: colors.tint,
+    },
+    comercioChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.icon,
+    },
   });
 
   const handleAddToCart = (product: Producto) => {
@@ -291,7 +340,6 @@ export default function CatalogScreen() {
             try {
               await deleteProducto(product.id);
               showToast('Producto eliminado', 'success');
-              fetchProductos();
             } catch (err) {
               showToast(err instanceof Error ? err.message : 'Error al eliminar', 'error');
             }
@@ -353,6 +401,37 @@ export default function CatalogScreen() {
             </Text>
           </Pressable>
         </View>
+      )}
+
+      {isOwner && ownerComercios.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.comercioScroll}>
+          {ownerComercios.map((comercio) => {
+            const isActive = comercio.id === selectedComercioId;
+            return (
+              <Pressable
+                key={comercio.id}
+                style={[
+                  styles.comercioChip,
+                  isActive && styles.comercioChipActive,
+                  !isActive && { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+                ]}
+                onPress={() => setSelectedComercioId(comercio.id)}>
+                <IconSymbol
+                  size={14}
+                  pack="material"
+                  name="storefront"
+                  color={isActive ? '#FFFFFF' : colors.icon}
+                />
+                <Text style={[styles.comercioChipText, isActive && { color: '#FFFFFF' }]}>
+                  {comercio.nombre}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
       )}
 
       {productos.length > 0 && (
