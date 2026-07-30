@@ -1,3 +1,4 @@
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ProductCard } from '@/components/ProductCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useToast } from '@/components/Toast';
@@ -39,6 +40,7 @@ export default function CatalogScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [customerMode, setCustomerMode] = useState(params.modo === 'cliente');
   const [selectedComercioId, setSelectedComercioId] = useState<number | null>(null);
+  const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
   const { width: screenWidth } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
 
@@ -328,25 +330,25 @@ export default function CatalogScreen() {
   };
 
   const handleDelete = (product: Producto) => {
-    Alert.alert(
-      'Eliminar producto',
-      `¿Seguro que querés eliminar "${product.nombre}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteProducto(product.id);
-              showToast('Producto eliminado', 'success');
-            } catch (err) {
-              showToast(err instanceof Error ? err.message : 'Error al eliminar', 'error');
-            }
-          },
-        },
-      ]
-    );
+    setProductoAEliminar(product);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!productoAEliminar) return;
+    const product = productoAEliminar;
+    setProductoAEliminar(null);
+    try {
+      await deleteProducto(product.id);
+      showToast('Producto eliminado', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al eliminar';
+      Alert.alert('Error', msg);
+      console.error('[Eliminar producto]', err);
+    }
+  };
+
+  const cancelarEliminar = () => {
+    setProductoAEliminar(null);
   };
 
   const renderProduct = (product: Producto) => {
@@ -529,6 +531,14 @@ export default function CatalogScreen() {
           <Text style={[styles.cartTotal, { flex: 1, textAlign: 'center' }]}>+ Agregar Producto</Text>
         </Pressable>
       )}
+
+      <ConfirmModal
+        visible={!!productoAEliminar}
+        title="Eliminar producto"
+        message={`¿Seguro que querés eliminar "${productoAEliminar?.nombre ?? ''}"?`}
+        onConfirm={confirmarEliminar}
+        onCancel={cancelarEliminar}
+      />
     </SafeAreaView>
   );
 }

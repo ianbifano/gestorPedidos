@@ -1,3 +1,4 @@
+import { ConfirmModal } from '@/components/ConfirmModal';
 import { ProductCard } from '@/components/ProductCard';
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
@@ -39,6 +40,7 @@ export default function ComercioDetalleScreen() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
 
   const id = params.id ? Number(params.id) : null;
   const nombre = params.nombre as string;
@@ -74,26 +76,26 @@ export default function ComercioDetalleScreen() {
   );
 
   const handleDelete = (producto: Producto) => {
-    Alert.alert(
-      'Eliminar producto',
-      `¿Seguro que querés eliminar "${producto.nombre}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteProducto(producto.id);
-              showToast('Producto eliminado', 'success');
-              fetchComercioProductos();
-            } catch (err) {
-              showToast(err instanceof Error ? err.message : 'Error al eliminar', 'error');
-            }
-          },
-        },
-      ]
-    );
+    setProductoAEliminar(producto);
+  };
+
+  const confirmarEliminar = async () => {
+    if (!productoAEliminar) return;
+    const product = productoAEliminar;
+    setProductoAEliminar(null);
+    try {
+      await deleteProducto(product.id);
+      showToast('Producto eliminado', 'success');
+      fetchComercioProductos();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al eliminar';
+      Alert.alert('Error', msg);
+      console.error('[Eliminar producto]', err);
+    }
+  };
+
+  const cancelarEliminar = () => {
+    setProductoAEliminar(null);
   };
 
   const handleEdit = (producto: Producto) => {
@@ -229,6 +231,14 @@ export default function ComercioDetalleScreen() {
       <TouchableOpacity style={[styles.floatingButton, { backgroundColor: C.tint }]} onPress={handleAddProduct}>
         <IconSymbol size={24} pack="material" name="add" color="#FFFFFF" />
       </TouchableOpacity>
+
+      <ConfirmModal
+        visible={!!productoAEliminar}
+        title="Eliminar producto"
+        message={`¿Seguro que querés eliminar "${productoAEliminar?.nombre ?? ''}"?`}
+        onConfirm={confirmarEliminar}
+        onCancel={cancelarEliminar}
+      />
     </ThemedView>
   );
 }

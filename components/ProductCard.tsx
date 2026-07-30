@@ -6,6 +6,7 @@ import {
     Pressable,
     StyleSheet,
     Text,
+    TouchableOpacity,
     View
 } from 'react-native';
 import { IconSymbol } from './ui/icon-symbol';
@@ -217,23 +218,23 @@ export function ProductCard({ product, onPress, onAddToCart, onEdit, onDelete, o
 
           {isOwnerMode ? (
             <View style={styles.ownerActions}>
-              <Pressable
-                style={({ pressed }) => [styles.iconButton, styles.iconButtonEdit, pressed && { opacity: 0.7 }]}
-                onPress={(e) => { e.stopPropagation(); onEdit?.(product); }}>
+              <TouchableOpacity
+                style={[styles.iconButton, styles.iconButtonEdit]}
+                onPress={() => onEdit?.(product)}>
                 <IconSymbol size={16} pack="material" name="edit" color="#007AFF" />
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.iconButton, styles.iconButtonDelete, pressed && { opacity: 0.7 }]}
-                onPress={(e) => { e.stopPropagation(); onDelete?.(product); }}>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.iconButton, styles.iconButtonDelete]}
+                onPress={() => onDelete?.(product)}>
                 <IconSymbol size={16} pack="material" name="delete" color="#FF3B30" />
-              </Pressable>
+              </TouchableOpacity>
             </View>
           ) : (
-            <Pressable
-              style={({ pressed }) => [styles.iconButton, styles.iconButtonCart, pressed && { opacity: 0.8 }]}
-              onPress={(e) => { e.stopPropagation(); onAddToCart?.(product); }}>
+            <TouchableOpacity
+              style={[styles.iconButton, styles.iconButtonCart]}
+              onPress={() => onAddToCart?.(product)}>
               <IconSymbol size={18} pack="material" name="add-shopping-cart" color="#FFFFFF" />
-            </Pressable>
+            </TouchableOpacity>
           )}
         </View>
       </View>

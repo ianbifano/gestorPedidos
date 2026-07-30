@@ -164,28 +164,16 @@ export function useProductos() {
   // DELETE
   // -------------------------
   const deleteProducto = async (id: number) => {
-    try {
-      const producto = productos.find((p) => p.id === id);
-      if (!producto) throw new Error('Producto no encontrado');
+    const { data, error } = await supabase
+      .from('productos')
+      .delete()
+      .eq('id', id)
+      .select();
 
-      if (producto.imagen) {
-        const imagePath = producto.imagen.split('/').pop();
-        if (imagePath) {
-          await supabase.storage.from('productos').remove([imagePath]);
-        }
-      }
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('No se pudo eliminar el producto. Verificá que tengas permisos de dueño sobre este comercio.');
 
-      const { error } = await supabase
-        .from('productos')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setProductos((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      throw err;
-    }
+    setProductos((prev) => prev.filter((p) => p.id !== id));
   };
 
   // -------------------------
