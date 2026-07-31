@@ -9,7 +9,7 @@ export function useProductos() {
   const [error, setError] = useState<string | null>(null);
 
   // -------------------------
-  // FETCH
+  // FETCH ALL
   // -------------------------
   const fetchProductos = useCallback(async () => {
     try {
@@ -18,7 +18,35 @@ export function useProductos() {
 
       const { data, error } = await supabase
         .from('productos')
-        .select('*');
+        .select('*, comercio:comercio_id (nombre)');
+
+      if (error) throw error;
+
+      setProductos(data ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // -------------------------
+  // FETCH BY COMERCIO IDS
+  // -------------------------
+  const fetchProductosByComercios = useCallback(async (comercioIds: number[]) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (comercioIds.length === 0) {
+        setProductos([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*, comercio:comercio_id (nombre)')
+        .in('comercio_id', comercioIds);
 
       if (error) throw error;
 
@@ -88,52 +116,119 @@ export function useProductos() {
   // UPDATE
   // -------------------------
   const updateProducto = async (
-  id: number,
-  nombre: string,
-  descripcion: string,
-  precio: number,
-  categoria: number | null,
-  disponible: boolean,
-  imagen: string | null
-) => {
-  try {
-    setError(null);
+    id: number,
+    nombre: string,
+    descripcion: string,
+    precio: number,
+    categoria: number | null,
+    disponible: boolean,
+    imagen: string | null,
+    publicado?: boolean
+  ) => {
+    try {
+      setError(null);
 
-    const { error } = await supabase
-      .from('productos')
-      .update({
+      const updates: Record<string, unknown> = {
         nombre,
         descripcion,
         precio,
         categoria,
         disponible,
-        imagen, // 👈 CLAVE
-      })
-      .eq('id', id);
+        imagen,
+      };
+      if (publicado !== undefined) {
+        updates.publicado = publicado;
+      }
 
-    if (error) throw error;
+      const { error } = await supabase
+        .from('productos')
+        .update(updates)
+        .eq('id', id);
 
-    await fetchProductos();
-  } catch (err) {
-    setError('Error al actualizar producto');
-    throw err;
-  }
-};
+      if (error) throw error;
+
+      setProductos((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, nombre, descripcion, precio, disponible, imagen, ...(publicado !== undefined ? { publicado } : {}) }
+            : p
+        )
+      );
+    } catch (err) {
+      setError('Error al actualizar producto');
+      throw err;
+    }
+  };
 
   // -------------------------
   // DELETE
   // -------------------------
   const deleteProducto = async (id: number) => {
+    const { data, error } = await supabase
+      .from('productos')
+      .delete()
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    if (!data || data.length === 0) throw new Error('No se pudo eliminar el producto. Verificá que tengas permisos de dueño sobre este comercio.');
+
+    setProductos((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // -------------------------
+  // UPDATE PRECIO
+  // -------------------------
+  const updatePrecio = async (id: number, precio: number) => {
     try {
+      setError(null);
       const { error } = await supabase
         .from('productos')
-        .delete()
+        .update({ precio })
         .eq('id', id);
 
       if (error) throw error;
-
       await fetchProductos();
     } catch (err) {
+      setError('Error al actualizar precio');
+      throw err;
+    }
+  };
+
+  // -------------------------
+  // TOGGLE PUBLICADO
+  // -------------------------
+  const togglePublicado = async (id: number, publicado: boolean) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('productos')
+        .update({ publicado })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProductos();
+    } catch (err) {
+      setError('Error al actualizar publicación');
+      throw err;
+    }
+  };
+
+  // -------------------------
+  // TOGGLE DISPONIBLE
+  // -------------------------
+  const toggleDisponible = async (id: number, disponible: boolean) => {
+    try {
+      setError(null);
+      const { error } = await supabase
+        .from('productos')
+        .update({ disponible })
+        .eq('id', id);
+
+      if (error) throw error;
+      await fetchProductos();
+    } catch (err) {
+      setError('Error al actualizar disponibilidad');
       throw err;
     }
   };
@@ -150,8 +245,12 @@ export function useProductos() {
     loading,
     error,
     fetchProductos,
+    fetchProductosByComercios,
     createProducto,
     updateProducto,
     deleteProducto,
+    updatePrecio,
+    togglePublicado,
+    toggleDisponible,
   };
 }

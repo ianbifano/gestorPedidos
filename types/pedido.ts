@@ -12,6 +12,9 @@ export interface Pedido {
     nombre: string;
     telefono?: string;
   };
+  comercio?: {
+    nombre: string;
+  };
 }
 
 export interface CreatePedidoInput {

@@ -20,3 +20,14 @@ export const uploadProductoImagen = async (uri: string) => {
 
   return data.publicUrl;
 };
+
+export const deleteProductoImagen = async (imagenUrl: string) => {
+  const fileName = imagenUrl.split('/').pop();
+  if (!fileName) return;
+
+  const { error } = await supabase.storage
+    .from('productos')
+    .remove([fileName]);
+
+  if (error) throw error;
+};

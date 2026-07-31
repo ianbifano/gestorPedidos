@@ -1,113 +1,71 @@
 import { supabase } from '@/constants/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import { Cliente } from '@/types/cliente';
-import { useEffect, useState } from 'react';
-import { normalizarTelefono } from './validators';
+import { useCallback, useEffect, useState } from 'react';
+
+const getMsg = (err: unknown, fallback: string): string =>
+  err instanceof Error ? err.message : (err as any)?.message ?? fallback;
 
 export function useClientes() {
+  const { user } = useAuth();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchClientes = async () => {
+  const getMisComercioIds = useCallback(async (): Promise<number[]> => {
+    if (!user?.email) return [];
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('email', user.email)
+        .limit(1)
+        .maybeSingle();
+
+      if (!userData?.user_id) return [];
+
+      const { data: vinculos } = await supabase
+        .from('users_x_comercios')
+        .select('comercio_id')
+        .eq('user_id', userData.user_id);
+
+      return (vinculos ?? []).map((v) => v.comercio_id).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }, [user?.email]);
+
+  const fetchClientes = useCallback(async () => {
+    if (!user) return;
     try {
       setLoading(true);
       setError(null);
+
+      const comercioIds = await getMisComercioIds();
+      if (comercioIds.length === 0) {
+        setClientes([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error: err } = await supabase
         .from('clientes')
         .select('*')
+        .in('comercio_id', comercioIds)
         .order('nombre', { ascending: true });
 
       if (err) throw err;
       setClientes(data || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(getMsg(err, 'Error al cargar clientes'));
     } finally {
       setLoading(false);
     }
-  };
-
-  // Verifica si existe un cliente con el mismo teléfono (excepto el actual)
-  const existeTelefono = (telefono: string, clienteIdActual?: number): boolean => {
-    if (!telefono.trim()) return false;
-    const telefonoNormalizado = normalizarTelefono(telefono);
-    return clientes.some(
-      (c) =>
-        normalizarTelefono(c.telefono || '') === telefonoNormalizado &&
-        c.id !== clienteIdActual
-    );
-  };
-
-  const createCliente = async (nombre: string, telefono?: string) => {
-    try {
-      setError(null);
-
-      // Verificar duplicado de teléfono
-      if (telefono && existeTelefono(telefono)) {
-        throw new Error('Ya existe un cliente con este teléfono');
-      }
-
-      const { data, error: err } = await supabase
-        .from('clientes')
-        .insert([{ nombre, telefono: telefono ? normalizarTelefono(telefono) : null }])
-        .select()
-        .single();
-
-      if (err) throw err;
-      setClientes([...clientes, data]);
-      return data;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al crear cliente';
-      setError(msg);
-      throw err;
-    }
-  };
-
-  const updateCliente = async (id: number, nombre: string, telefono?: string) => {
-    try {
-      setError(null);
-
-      // Verificar duplicado de teléfono
-      if (telefono && existeTelefono(telefono, id)) {
-        throw new Error('Ya existe otro cliente con este teléfono');
-      }
-
-      const { data, error: err } = await supabase
-        .from('clientes')
-        .update({ nombre, telefono: telefono ? normalizarTelefono(telefono) : null })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (err) throw err;
-      setClientes(clientes.map((c) => (c.id === id ? data : c)));
-      return data;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al actualizar cliente';
-      setError(msg);
-      throw err;
-    }
-  };
-
-  const deleteCliente = async (id: number) => {
-    try {
-      setError(null);
-      const { error: err } = await supabase
-        .from('clientes')
-        .delete()
-        .eq('id', id);
-
-      if (err) throw err;
-      setClientes(clientes.filter((c) => c.id !== id));
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al eliminar cliente';
-      setError(msg);
-      throw err;
-    }
-  };
+  }, [user, getMisComercioIds]);
 
   useEffect(() => {
     fetchClientes();
-  }, []);
+  }, [fetchClientes]);
 
-  return { clientes, loading, error, fetchClientes, createCliente, updateCliente, deleteCliente, existeTelefono };
+  return { clientes, loading, error, refetch: fetchClientes };
 }

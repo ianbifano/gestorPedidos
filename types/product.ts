@@ -6,6 +6,8 @@ export interface Product {
   imagen?: string;
   categoria?: string;
   disponible?: boolean;
+  comercio_id?: number;
+  comercio_nombre?: string;
 }
 
 export interface CartItem {

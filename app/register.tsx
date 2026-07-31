@@ -1,8 +1,11 @@
 import { AuthMessageModal } from '@/components/AuthMessageModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -40,6 +43,9 @@ export default function RegisterScreen() {
 
   const { signUp } = useAuth();
   const router = useRouter();
+  const scheme = useColorScheme();
+  const C = Colors[scheme];
+  const S = useMemo(() => styles(C), [C]);
 
   const showError = (message: string) => {
     setDialog({ visible: true, title: 'Advertencia', message, type: 'error' });
@@ -85,7 +91,7 @@ export default function RegisterScreen() {
           ? 'Revise su correo electrónico para confirmar la cuenta antes de iniciar sesión.'
           : 'Su cuenta fue creada correctamente.',
         type: 'success',
-        onClose: () => router.replace((result.needsEmailConfirmation ? '/login' : '/(tabs)') as any),
+        onClose: result.needsEmailConfirmation ? () => router.replace('/login' as any) : undefined,
       });
     } catch (error) {
       showError(getRegisterErrorMessage(error));
@@ -95,33 +101,38 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={S.safeArea}>
+      <View style={S.toggleContainer}>
+        <ThemeToggle />
+      </View>
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={S.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.content}>
-          <View style={styles.logoCircle}>
-            <IconSymbol pack="ant" name="dropbox" size={96} color="#2F5CF6" />
+          contentContainerStyle={S.content}>
+          <View style={S.logoCircle}>
+            <IconSymbol pack="ant" name="dropbox" size={96} color={C.tint} />
           </View>
 
-          <Text style={styles.appTitle}>App de Gestión de Pedidos para{`\n`}Emprendedores</Text>
+          <Text style={S.appTitle}>Crear tu cuenta</Text>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>Nombre de Usuario</Text>
+          <View style={S.form}>
+            <Text style={S.label}>Nombre de Usuario</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={username}
               onChangeText={setUsername}
               editable={!loading}
               autoCapitalize="words"
               textContentType="username"
+              placeholder="Tu nombre"
+              placeholderTextColor={C.textSecondary}
             />
 
-            <Text style={styles.label}>Correo Electrónico</Text>
+            <Text style={S.label}>Correo Electrónico</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={email}
               onChangeText={setEmail}
               editable={!loading}
@@ -129,39 +140,45 @@ export default function RegisterScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               textContentType="emailAddress"
+              placeholder="ejemplo@correo.com"
+              placeholderTextColor={C.textSecondary}
             />
 
-            <Text style={styles.label}>Contraseña</Text>
+            <Text style={S.label}>Contraseña</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={password}
               onChangeText={setPassword}
               editable={!loading}
               secureTextEntry
               textContentType="newPassword"
+              placeholder="Mínimo 6 caracteres"
+              placeholderTextColor={C.textSecondary}
             />
 
-            <Text style={styles.label}>Confirmar Contraseña</Text>
+            <Text style={S.label}>Confirmar Contraseña</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               editable={!loading}
               secureTextEntry
               textContentType="newPassword"
+              placeholder="Repetir contraseña"
+              placeholderTextColor={C.textSecondary}
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.disabledButton]}
+              style={[S.primaryButton, loading && S.disabledButton]}
               onPress={handleRegister}
               disabled={loading}
               activeOpacity={0.85}>
-              {loading ? <ActivityIndicator color="#111111" /> : <Text style={styles.primaryButtonText}>Registrarse</Text>}
+              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={S.primaryButtonText}>Registrarse</Text>}
             </TouchableOpacity>
 
-            <Text style={styles.linkText}>
+            <Text style={S.linkText}>
               ¿Ya tienes cuenta?{' '}
-              <Text style={styles.link} onPress={() => router.push('/login' as any)}>
+              <Text style={S.link} onPress={() => router.push('/login' as any)}>
                 Iniciar Sesión
               </Text>
             </Text>
@@ -183,21 +200,24 @@ export default function RegisterScreen() {
 function getRegisterErrorMessage(error: unknown) {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
-
     if (message.includes('already registered') || message.includes('already exists')) {
       return 'Ya existe una cuenta registrada con este correo electrónico.';
     }
-
     return error.message;
   }
-
   return 'No se pudo crear la cuenta.';
 }
 
-const styles = StyleSheet.create({
+const styles = (C: typeof Colors.light) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2F5CF6',
+    backgroundColor: C.background,
+  },
+  toggleContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 8 : 16,
+    right: 12,
+    zIndex: 10,
   },
   keyboardView: {
     flex: 1,
@@ -210,75 +230,85 @@ const styles = StyleSheet.create({
     paddingBottom: 42,
   },
   logoCircle: {
-    width: 176,
-    height: 176,
-    borderRadius: 88,
-    backgroundColor: '#FFFFFF',
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: C.border,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   appTitle: {
-    marginTop: 26,
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
+    marginTop: 24,
+    color: C.text,
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 28,
   },
   form: {
     width: '100%',
-    maxWidth: 520,
-    marginTop: 64,
+    maxWidth: 400,
+    marginTop: 36,
+    backgroundColor: C.card,
+    padding: 28,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 25,
-    fontWeight: '900',
+    color: C.text,
+    fontSize: 14,
+    fontWeight: '700',
     marginBottom: 6,
   },
   input: {
     height: 48,
-    backgroundColor: '#FFFFFF',
-    borderColor: '#111111',
+    backgroundColor: C.background,
+    borderColor: C.border,
     borderWidth: 1.5,
-    borderRadius: 6,
+    borderRadius: 10,
     paddingHorizontal: 14,
-    color: '#111111',
-    fontSize: 18,
-    marginBottom: 28,
+    color: C.text,
+    fontSize: 16,
+    marginBottom: 20,
   },
   primaryButton: {
-    alignSelf: 'center',
-    minWidth: 214,
-    height: 46,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#111111',
-    backgroundColor: '#FFFFFF',
+    alignSelf: 'stretch',
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: C.tint,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 22,
+    marginTop: 8,
   },
   disabledButton: {
     opacity: 0.65,
   },
   primaryButtonText: {
-    color: '#111111',
-    fontSize: 25,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
   },
   linkText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: C.textSecondary,
+    fontSize: 14,
     textAlign: 'center',
     marginTop: 20,
   },
   link: {
-    color: '#FFFFFF',
-    textDecorationLine: 'underline',
+    color: C.tint,
+    fontWeight: '600',
   },
 });

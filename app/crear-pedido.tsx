@@ -126,15 +126,10 @@ export default function CrearPedidoScreen() {
               <ActivityIndicator size="large" />
             ) : clientes.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>No hay clientes</Text>
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={() => {
-                    setShowClienteModal(false);
-                    router.push('/crear-cliente');
-                  }}>
-                  <Text style={styles.linkButtonText}>+ Crear cliente</Text>
-                </TouchableOpacity>
+                <Text style={styles.emptyStateText}>No hay clientes disponibles</Text>
+                <Text style={[styles.emptyStateSubtext, { color: C.icon }]}>
+                  Los clientes se registran automáticamente al realizar compras
+                </Text>
               </View>
             ) : (
               <FlatList
@@ -180,7 +175,7 @@ function createStyles(C: typeof Colors.light) {
     buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     buttonCancel: { paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10, borderWidth: 1, borderColor: C.border },
     buttonCancelText: { color: C.tint, fontSize: 16, fontWeight: '600' },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10, fontSize: 13 },
+    error: { color: C.danger, padding: 10, backgroundColor: C.danger + '18', borderRadius: 8, marginBottom: 10, fontSize: 13 },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContent: { backgroundColor: C.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, maxHeight: '80%' },
     modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, color: C.text },
@@ -188,9 +183,8 @@ function createStyles(C: typeof Colors.light) {
     clienteOptionText: { fontSize: 16, fontWeight: '500', color: C.text },
     clienteTelefono: { fontSize: 13, color: C.icon, marginTop: 4 },
     emptyState: { alignItems: 'center', paddingVertical: 30 },
-    emptyStateText: { fontSize: 16, color: C.icon, marginBottom: 15 },
-    linkButton: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 6, borderWidth: 1, borderColor: C.tint },
-    linkButtonText: { color: C.tint, fontSize: 14, fontWeight: '600' },
+    emptyStateText: { fontSize: 16, color: C.icon, marginBottom: 8 },
+    emptyStateSubtext: { fontSize: 13, color: C.icon, textAlign: 'center', paddingHorizontal: 20, lineHeight: 18 },
     modalCloseButton: { paddingVertical: 12, borderRadius: 8, alignItems: 'center', marginTop: 15, borderWidth: 1, borderColor: C.border },
     modalCloseButtonText: { color: C.tint, fontSize: 16, fontWeight: '600' },
   });

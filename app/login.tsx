@@ -1,8 +1,11 @@
 import { AuthMessageModal } from '@/components/AuthMessageModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -32,6 +35,9 @@ export default function LoginScreen() {
 
   const { signIn } = useAuth();
   const router = useRouter();
+  const scheme = useColorScheme();
+  const C = Colors[scheme];
+  const S = useMemo(() => styles(C), [C]);
 
   const showError = (message: string, title = 'Advertencia') => {
     setDialog({ visible: true, title, message });
@@ -53,7 +59,6 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await signIn(normalizedEmail, password);
-      router.replace('/(tabs)' as any);
     } catch (error) {
       showError(getAuthErrorMessage(error));
     } finally {
@@ -62,23 +67,26 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={S.safeArea}>
+      <View style={S.toggleContainer}>
+        <ThemeToggle />
+      </View>
       <KeyboardAvoidingView
-        style={styles.keyboardView}
+        style={S.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.content}>
-          <View style={styles.logoCircle}>
-            <IconSymbol pack="ant" name="dropbox" size={96} color="#2F5CF6" />
+          contentContainerStyle={S.content}>
+          <View style={S.logoCircle}>
+            <IconSymbol pack="ant" name="dropbox" size={96} color={C.tint} />
           </View>
 
-          <Text style={styles.appTitle}>App de Gestión de Pedidos para{`\n`}Emprendedores</Text>
+          <Text style={S.appTitle}>Gestor de Pedidos</Text>
 
-          <View style={styles.form}>
-            <Text style={styles.label}>Correo Electrónico</Text>
+          <View style={S.form}>
+            <Text style={S.label}>Correo Electrónico</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={email}
               onChangeText={setEmail}
               editable={!loading}
@@ -86,29 +94,33 @@ export default function LoginScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               textContentType="emailAddress"
+              placeholder="ejemplo@correo.com"
+              placeholderTextColor={C.textSecondary}
             />
 
-            <Text style={styles.label}>Contraseña</Text>
+            <Text style={S.label}>Contraseña</Text>
             <TextInput
-              style={styles.input}
+              style={S.input}
               value={password}
               onChangeText={setPassword}
               editable={!loading}
               secureTextEntry
               textContentType="password"
+              placeholder="••••••••"
+              placeholderTextColor={C.textSecondary}
             />
 
             <TouchableOpacity
-              style={[styles.primaryButton, loading && styles.disabledButton]}
+              style={[S.primaryButton, loading && S.disabledButton]}
               onPress={handleLogin}
               disabled={loading}
               activeOpacity={0.85}>
-              {loading ? <ActivityIndicator color="#111111" /> : <Text style={styles.primaryButtonText}>Iniciar Sesión</Text>}
+              {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={S.primaryButtonText}>Iniciar Sesión</Text>}
             </TouchableOpacity>
 
-            <Text style={styles.linkText}>
+            <Text style={S.linkText}>
               ¿No tienes cuenta?{' '}
-              <Text style={styles.link} onPress={() => router.push('/register' as any)}>
+              <Text style={S.link} onPress={() => router.push('/register' as any)}>
                 Registrate
               </Text>
             </Text>
@@ -130,14 +142,19 @@ function getAuthErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.toLowerCase().includes('invalid login')) {
     return 'Correo electrónico o contraseña inválidos.';
   }
-
   return error instanceof Error ? error.message : 'No se pudo iniciar sesión.';
 }
 
-const styles = StyleSheet.create({
+const styles = (C: typeof Colors.light) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2F5CF6',
+    backgroundColor: C.background,
+  },
+  toggleContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 8 : 16,
+    right: 12,
+    zIndex: 10,
   },
   keyboardView: {
     flex: 1,
@@ -150,56 +167,65 @@ const styles = StyleSheet.create({
     paddingBottom: 42,
   },
   logoCircle: {
-    width: 176,
-    height: 176,
-    borderRadius: 88,
-    backgroundColor: '#FFFFFF',
+    width: 144,
+    height: 144,
+    borderRadius: 72,
+    backgroundColor: C.card,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    borderWidth: 2,
+    borderColor: C.border,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
   },
   appTitle: {
-    marginTop: 26,
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
+    marginTop: 24,
+    color: C.text,
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: 28,
   },
   form: {
     width: '100%',
-    maxWidth: 520,
-    marginTop: 74,
+    maxWidth: 400,
+    marginTop: 48,
+    backgroundColor: C.card,
+    padding: 28,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.border,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   label: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '900',
+    color: C.text,
+    fontSize: 14,
+    fontWeight: '700',
     marginBottom: 6,
   },
   input: {
     height: 48,
-    backgroundColor: '#FFFFFF',
-    borderColor: '#111111',
+    backgroundColor: C.background,
+    borderColor: C.border,
     borderWidth: 1.5,
-    borderRadius: 6,
+    borderRadius: 10,
     paddingHorizontal: 14,
-    color: '#111111',
-    fontSize: 18,
-    marginBottom: 36,
+    color: C.text,
+    fontSize: 16,
+    marginBottom: 20,
   },
   primaryButton: {
-    alignSelf: 'center',
-    minWidth: 214,
-    height: 46,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: '#111111',
-    backgroundColor: '#FFFFFF',
+    alignSelf: 'stretch',
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: C.tint,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
@@ -208,17 +234,18 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   primaryButtonText: {
-    color: '#111111',
-    fontSize: 25,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
   },
   linkText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+    color: C.textSecondary,
+    fontSize: 14,
     textAlign: 'center',
     marginTop: 20,
   },
   link: {
-    color: '#FFFFFF',
-    textDecorationLine: 'underline',
+    color: C.tint,
+    fontWeight: '600',
   },
 });

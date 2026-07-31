@@ -1,31 +1,56 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, useFocusEffect } from 'expo-router';
+import React, { useCallback } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
 import { CartBadge } from '@/components/CartBadge';
 import { HapticTab } from '@/components/haptic-tab';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useComercios } from '@/hooks/use-comercios';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const { signOut } = useAuth();
-  const C = Colors[colorScheme ?? 'light'];
+  const { comercios, fetchComercios } = useComercios();
+  const C = Colors[colorScheme];
+  const tieneComercios = comercios.length > 0;
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchComercios();
+    }, [fetchComercios])
+  );
+
+  const headerRight = () => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+      <ThemeToggle />
+      <TouchableOpacity onPress={() => signOut()}>
+        <Text style={{ color: C.tint, fontSize: 15, fontWeight: '600' }}>Salir</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, backgroundColor: C.background }}>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+          tabBarActiveTintColor: C.tabIconSelected,
+          tabBarInactiveTintColor: C.tabIconDefault,
           headerShown: true,
+          headerStyle: { backgroundColor: C.card },
+          headerTintColor: C.text,
           tabBarButton: HapticTab,
           tabBarLabelPosition: 'below-icon',
           tabBarStyle: {
+            backgroundColor: C.card,
+            borderTopColor: C.border,
             paddingBottom: 8,
             paddingTop: 8,
           },
+          headerRight,
         }}>
         <Tabs.Screen
           name="index"
@@ -34,11 +59,6 @@ export default function TabLayout() {
             headerTitle: 'Gestor de Pedidos',
             headerLargeTitle: true,
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="material" name="house" color={color} />,
-            headerRight: () => (
-              <TouchableOpacity onPress={() => signOut()} style={{ marginRight: 16 }}>
-                <Text style={{ color: C.tint, fontSize: 15, fontWeight: '600' }}>Salir</Text>
-              </TouchableOpacity>
-            ),
           }}
         />
         <Tabs.Screen
@@ -53,8 +73,8 @@ export default function TabLayout() {
         <Tabs.Screen
           name="explore"
           options={{
-            title: 'Pedidos',
-            headerTitle: 'Mis Pedidos',
+            title: tieneComercios ? 'Pedidos' : 'Mis Compras',
+            headerTitle: tieneComercios ? 'Mis Pedidos' : 'Mis Compras',
             tabBarIcon: ({ color }) => <IconSymbol size={28} pack="ant" name="dropbox" color={color} />,
           }}
         />
@@ -72,22 +92,7 @@ export default function TabLayout() {
             ),
           }}
         />
-        <Tabs.Screen
-          name="clientes"
-          options={{
-            title: 'Clientes',
-            headerTitle: 'Gestionar Clientes',
-            tabBarIcon: ({ color }) => <IconSymbol size={28} pack="fontawesome" name="users" color={color} />,
-          }}
-        />
       </Tabs>
-      
-      {/* <FAB 
-        onPress={() => router.push('/crear-pedido')}
-        icon="dropbox"
-        position="center"
-        pack="ant"
-      /> */}
     </View>
   );
 }

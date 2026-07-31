@@ -1,190 +1,586 @@
-import { ThemedView } from '@/components/themed-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { usePedidos } from '@/hooks/use-pedidos';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors, StateColors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useEstados } from '@/contexts/EstadosContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
+import { usePedidos } from '@/hooks/use-pedidos';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    ActivityIndicator,
+    Pressable,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View
+} from 'react-native';
 
 export default function DashboardScreen() {
-  const { pedidos, loading, error, fetchPedidos } = usePedidos();
-  const router = useRouter();
-  const scheme = useColorScheme() ?? 'light';
+  const { user } = useAuth();
+  const { comercios, loading: loadingComercios, fetchComercios } = useComercios();
+  const { pedidos, pedidosCliente, loading, fetchPedidosByStore, fetchPedidos, resumenPorEstado } = usePedidos();
+  const { estados, getEstadoNombre } = useEstados();
+  const scheme = useColorScheme();
   const C = Colors[scheme];
-  const styles = useMemo(() => createStyles(C), [C]);
+  const S = styles(C);
+  const router = useRouter();
+  const email = user?.email ?? '';
+  const username = user?.user_metadata?.username ?? email.split('@')[0];
+  const tieneComercios = comercios.length > 0;
+  const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
+
+  const activeStore = useMemo(
+    () => comercios.find((c) => c.id === selectedStoreId) ?? null,
+    [comercios, selectedStoreId]
+  );
+
+  useEffect(() => {
+    if (tieneComercios && comercios.length > 0 && selectedStoreId === null) {
+      setSelectedStoreId(comercios[0].id);
+      fetchPedidosByStore(comercios[0].id);
+    }
+  }, [tieneComercios, comercios, selectedStoreId, fetchPedidosByStore]);
 
   useFocusEffect(
     useCallback(() => {
-      fetchPedidos();
-    }, [fetchPedidos])
+      fetchComercios();
+      if (selectedStoreId) {
+        fetchPedidosByStore(selectedStoreId);
+      } else {
+        fetchPedidos();
+      }
+    }, [selectedStoreId, fetchPedidosByStore, fetchPedidos, fetchComercios])
   );
 
-  if (loading) {
+  const pedidosFiltrados = useMemo(() => {
+    if (selectedStoreId) {
+      return pedidos.filter((p) => p.comercio_id === selectedStoreId);
+    }
+    return pedidos;
+  }, [pedidos, selectedStoreId]);
+
+  const ultimosPedidos = useMemo(() => pedidosFiltrados.slice(0, 5), [pedidosFiltrados]);
+
+  const stats = useMemo(() => {
+    const total = pedidosFiltrados.length;
+    const entregados = pedidosFiltrados.filter((p) => p.estado === 6).length;
+    const ultimos7 = pedidosFiltrados.filter((p) => {
+      const date = new Date(p.created_at);
+      const now = new Date();
+      return (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) <= 7;
+    }).length;
+    const montoTotal = pedidosFiltrados.reduce((sum, p) => sum + p.monto, 0);
+    return { total, entregados, ultimos7, montoTotal };
+  }, [pedidosFiltrados]);
+
+  const handleStoreChange = useCallback((storeId: number) => {
+    setSelectedStoreId(storeId);
+    fetchPedidosByStore(storeId);
+  }, [fetchPedidosByStore]);
+
+  if (loadingComercios) {
     return (
-      <ThemedView style={styles.container}>
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={C.tint} />
+        </View>
+      </SafeAreaView>
     );
   }
 
-  const ultimosPedidos = pedidos.slice(0, 3);
-
-  const { estados, getEstadoNombre } = useEstados();
-
-  return (
-    <ScrollView style={styles.scrollContainer}>
-      <ThemedView style={styles.container}>
-        {error && <Text style={styles.error}>{error}</Text>}
-
-        <View style={styles.cardContainer}>
-          {estados.map((est) => {
-            const count = pedidos.filter((p) => p.estado === est.id).length;
-            return (
-              <TouchableOpacity
-                key={est.id}
-                style={[styles.card, getCardColor(est.id, scheme)]}
-                onPress={() => router.push(`/(tabs)/explore?estado=${est.id}`)}>
-                <Text style={styles.cardNumber}>{count}</Text>
-                <Text style={styles.cardLabel}>{est.nombre}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Últimos Pedidos</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
-              <Text style={styles.seeAll}>Ver todos →</Text>
-            </TouchableOpacity>
+  if (!tieneComercios) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+        <ScrollView contentContainerStyle={S.scrollContent}>
+          <View style={S.headerSection}>
+            <View style={[S.avatarCircle, { borderColor: C.border }]}>
+              <IconSymbol size={44} pack="material" name="person" color={C.icon} />
+            </View>
+            <Text style={S.greeting}>{username}</Text>
+            <Text style={S.email}>{email}</Text>
           </View>
 
-          {ultimosPedidos.length === 0 ? (
-            <Text style={styles.emptyText}>No hay pedidos</Text>
-          ) : (
-            <View style={styles.pedidosList}>
-              {ultimosPedidos.map((pedido) => (
-                <TouchableOpacity
-                  key={pedido.id}
-                  style={styles.pedidoItem}
-                  onPress={() => router.push(`/pedido-detalle?id=${pedido.id}`)}>
-                  <View style={styles.pedidoHeader}>
-                    <Text style={styles.pedidoId}>Pedido #{pedido.id}</Text>
-                    <View style={[styles.miniBadge, getBadgeColor(pedido.estado)]}>
-                      <Text style={styles.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.pedidoCliente}>{pedido.cliente?.nombre}</Text>
-                  <View style={styles.pedidoFooter}>
-                    <Text style={styles.pedidoMonto}>${pedido.monto.toFixed(2)}</Text>
-                    <Text style={styles.pedidoDate}>
-                      {new Date(pedido.created_at).toLocaleDateString('es-AR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+          <View style={S.messageCard}>
+            <IconSymbol size={28} pack="material" name="store" color={C.icon} />
+            <Text style={S.messageTitle}>Todavía no tenés un comercio</Text>
+            <Text style={S.messageBody}>
+              Crea tu primer comercio para empezar a vender y gestionar tus pedidos, o ingresá como cliente para explorar productos.
+            </Text>
+          </View>
+
+          <Pressable
+            style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(0,122,255,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+            onPress={() => router.push('/(tabs)/catalogo?modo=cliente')}>
+            <View style={[S.optionIconContainer, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+              <IconSymbol size={28} pack="material" name="shopping-bag" color={C.tint} />
             </View>
-          )}
+            <View style={S.optionContent}>
+              <Text style={S.optionTitle}>Ingresar como Cliente</Text>
+              <Text style={S.optionSubtitle}>Explorá productos y realizá compras</Text>
+            </View>
+            <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(255,149,0,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+            onPress={() => router.push('/crear-comercio')}>
+            <View style={[S.optionIconContainer, { backgroundColor: 'rgba(255,149,0,0.15)' }]}>
+              <IconSymbol size={28} pack="material" name="add-business" color={C.accent} />
+            </View>
+            <View style={S.optionContent}>
+              <Text style={[S.optionTitle, { color: C.accent }]}>+ Crear mi Comercio</Text>
+              <Text style={S.optionSubtitle}>Registrá tu negocio y empezá a vender</Text>
+            </View>
+            <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.background }}>
+      <ScrollView contentContainerStyle={S.scrollContent}>
+        <View style={S.headerSection}>
+          <View style={[S.avatarCircle, { borderColor: C.border }]}>
+            <IconSymbol size={44} pack="material" name="person" color={C.icon} />
+          </View>
+          <Text style={S.greeting}>{username}</Text>
+          <Text style={S.email}>{email}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.buttonPrimary}
-          onPress={() => router.push('/crear-pedido')}>
-          <Text style={styles.buttonText}>+ Crear Pedido</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.buttonSecondary}
-          onPress={() => router.push('/crear-cliente')}>
-          <Text style={styles.buttonTextSecondary}>+ Nuevo Cliente</Text>
-        </TouchableOpacity>
-
-        <View style={styles.stats}>
-          <Text style={styles.statsTitle}>Estadísticas</Text>
-          <Text style={styles.statsSubtitle}>
-            Total de pedidos: <Text style={styles.statValue}>{pedidos.length}</Text>
-          </Text>
-          <Text style={styles.statsSubtitle}>
-            Últimos 7 días:{' '}
-            <Text style={styles.statValue}>
-              {pedidos.filter((p) => {
-                const date = new Date(p.created_at);
-                const now = new Date();
-                return (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) <= 7;
-              }).length}
-            </Text>
-          </Text>
-          <Text style={styles.statsSubtitle}>
-            Tasa entrega:{' '}
-            <Text style={styles.statValue}>
-              {pedidos.length > 0
-                ? Math.round((pedidos.filter((p) => p.estado === 6).length / pedidos.length) * 100)
-                : 0}%
-            </Text>
-          </Text>
+        <View style={S.sectionHeader}>
+          <IconSymbol size={18} pack="material" name="store" color={C.accent} />
+          <Text style={S.sectionTitle}>Mis Comercios</Text>
+          <Text style={S.sectionCount}>{comercios.length}</Text>
         </View>
-      </ThemedView>
-    </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={S.comercioScroll}>
+          {comercios.map((comercio) => {
+            const isActive = comercio.id === selectedStoreId;
+            return (
+              <Pressable
+                key={comercio.id}
+                style={({ pressed }) => [
+                  S.comercioChip,
+                  isActive && S.comercioChipActive,
+                  !isActive && { backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+                  pressed && { opacity: 0.85 },
+                ]}
+                onPress={() => handleStoreChange(comercio.id)}>
+                <IconSymbol
+                  size={16}
+                  pack="material"
+                  name="storefront"
+                  color={isActive ? '#FFFFFF' : C.icon}
+                />
+                <Text style={[S.comercioChipText, isActive && { color: '#FFFFFF' }]}>
+                  {comercio.nombre}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {activeStore && (
+          <>
+            {loading && (
+              <View style={S.dashboardLoading}>
+                <ActivityIndicator size="small" color={C.tint} />
+                <Text style={S.dashboardLoadingText}>Cargando pedidos...</Text>
+              </View>
+            )}
+            <View style={S.statsRow}>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.tint }]}>{stats.total}</Text>
+                <Text style={S.statLabel}>Total</Text>
+              </View>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.success }]}>{stats.entregados}</Text>
+                <Text style={S.statLabel}>Entregados</Text>
+              </View>
+              <View style={S.statCard}>
+                <Text style={[S.statNumber, { color: C.accent, fontSize: 14 }]}>
+                  ${stats.montoTotal.toLocaleString('es-AR')}
+                </Text>
+                <Text style={S.statLabel}>Vendido</Text>
+              </View>
+            </View>
+
+            <View style={S.estadosGrid}>
+              {estados.map((est) => {
+                const count = resumenPorEstado(est.id, selectedStoreId);
+                const sc = StateColors[est.id];
+                const bgColor = scheme === 'dark' ? sc.dark : sc.light;
+                return (
+                  <Pressable
+                    key={est.id}
+                    style={[S.estadoCard, { backgroundColor: bgColor + '22' }]}
+                    onPress={() => {
+                      router.push(`/(tabs)/explore?estado=${est.id}&comercio_id=${selectedStoreId}` as any);
+                    }}>
+                    <Text style={[S.estadoNumber, { color: bgColor }]}>{count}</Text>
+                    <Text style={S.estadoLabel}>{est.nombre}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={S.sectionBlock}>
+              <View style={S.sectionHeaderRow}>
+                <Text style={S.sectionBlockTitle}>Últimos Pedidos</Text>
+                <Pressable onPress={() => router.push(`/(tabs)/explore?comercio_id=${selectedStoreId}` as any)}>
+                  <Text style={S.seeAllText}>Ver todos →</Text>
+                </Pressable>
+              </View>
+
+              {ultimosPedidos.length === 0 ? (
+                <Text style={S.emptyText}>No hay pedidos en este comercio</Text>
+              ) : (
+                <View style={S.pedidosList}>
+                  {ultimosPedidos.map((pedido) => (
+                    <Pressable
+                      key={pedido.id}
+                      style={({ pressed }) => [S.pedidoItem, pressed && { opacity: 0.9 }]}
+                      onPress={() => router.push(`/pedido-detalle?id=${pedido.id}` as any)}>
+                      <View style={S.pedidoHeader}>
+                        <Text style={S.pedidoId}>Pedido #{pedido.id}</Text>
+                        <View style={[S.miniBadge, { backgroundColor: (StateColors[pedido.estado]?.[scheme === 'dark' ? 'dark' : 'light']) || '#999' }]}>
+                          <Text style={S.miniBadgeText}>{getEstadoNombre(pedido.estado)}</Text>
+                        </View>
+                      </View>
+                      <Text style={S.pedidoCliente}>{pedido.cliente?.nombre}</Text>
+                      <View style={S.pedidoFooter}>
+                        <Text style={S.pedidoMonto}>${pedido.monto.toFixed(2)}</Text>
+                        <Text style={S.pedidoDate}>
+                          {new Date(pedido.created_at).toLocaleDateString('es-AR', { month: 'short', day: 'numeric' })}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
+        )}
+
+        <View style={S.divider} />
+
+        <Pressable
+          style={({ pressed }) => [S.optionCard, { borderColor: 'rgba(0,122,255,0.25)' }, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+          onPress={() => router.push('/(tabs)/catalogo?modo=cliente')}>
+          <View style={[S.optionIconContainer, { backgroundColor: 'rgba(0,122,255,0.12)' }]}>
+            <IconSymbol size={28} pack="material" name="shopping-bag" color={C.tint} />
+          </View>
+          <View style={S.optionContent}>
+            <Text style={S.optionTitle}>Ir a Comprar</Text>
+            <Text style={S.optionSubtitle}>Navegá el catálogo como cliente</Text>
+          </View>
+          <IconSymbol size={22} pack="material" name="chevron-right" color={C.icon} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [S.addComercioBtn, pressed && { opacity: 0.8 }]}
+          onPress={() => router.push('/crear-comercio')}>
+          <IconSymbol size={18} pack="material" name="add" color={C.icon} />
+          <Text style={S.addComercioText}>Agregar otro comercio</Text>
+        </Pressable>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const CARD_COLORS_LIGHT: Record<number, string> = {
-  1: '#FFF3E0', 2: '#E3F2FD', 3: '#FBE9E7',
-  4: '#FFEBEE', 5: '#F3E5F5', 6: '#E8F5E9',
-};
-const CARD_COLORS_DARK: Record<number, string> = {
-  1: '#3A2800', 2: '#001F3A', 3: '#3A1500',
-  4: '#3A0000', 5: '#2A003A', 6: '#003A00',
-};
-const BADGE_COLORS: Record<number, string> = {
-  1: '#FFB74D', 2: '#42A5F5', 3: '#FF7043',
-  4: '#EF5350', 5: '#AB47BC', 6: '#66BB6A',
-};
-
-function getCardColor(estado: number, scheme: 'light' | 'dark') {
-  const map = scheme === 'dark' ? CARD_COLORS_DARK : CARD_COLORS_LIGHT;
-  return { backgroundColor: map[estado] || (scheme === 'dark' ? '#1C1C1E' : '#FFF') };
-}
-
-function getBadgeColor(estado: number) {
-  return { backgroundColor: BADGE_COLORS[estado] || '#999' };
-}
-
-function createStyles(C: typeof Colors.light) {
-  return StyleSheet.create({
-    scrollContainer: { flex: 1 },
-    container: { padding: 20 },
-    cardContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginVertical: 20, gap: 10 },
-    card: { width: '30%', paddingVertical: 20, paddingHorizontal: 10, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-    cardNumber: { fontSize: 28, fontWeight: 'bold', marginBottom: 5, color: C.text },
-    cardLabel: { fontSize: 12, fontWeight: '500', color: C.text },
-    section: { marginVertical: 20 },
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    sectionTitle: { fontSize: 16, fontWeight: 'bold', color: C.text },
-    seeAll: { fontSize: 14, color: C.tint, fontWeight: '600' },
-    pedidosList: { gap: 10 },
-    pedidoItem: { backgroundColor: C.card, borderRadius: 8, padding: 12, borderWidth: 1, borderColor: C.border },
-    pedidoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-    pedidoId: { fontSize: 14, fontWeight: 'bold', color: C.text },
-    miniBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-    miniBadgeText: { color: 'white', fontSize: 10, fontWeight: '600' },
-    pedidoCliente: { fontSize: 13, color: C.icon, marginBottom: 6 },
-    pedidoFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTopWidth: 1, borderTopColor: C.border },
-    pedidoMonto: { fontSize: 14, fontWeight: 'bold', color: C.tint },
-    pedidoDate: { fontSize: 12, color: C.icon },
-    emptyText: { fontSize: 14, color: C.icon, textAlign: 'center', paddingVertical: 20 },
-    buttonPrimary: { backgroundColor: C.tint, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 20 },
-    buttonSecondary: { backgroundColor: C.lightGray, paddingVertical: 14, borderRadius: 8, alignItems: 'center', marginTop: 10 },
-    buttonText: { color: 'white', fontSize: 16, fontWeight: '600' },
-    buttonTextSecondary: { color: C.tint, fontSize: 16, fontWeight: '600' },
-    stats: { marginTop: 30, marginBottom: 30, padding: 15, backgroundColor: C.lightGray, borderRadius: 8 },
-    statsTitle: { fontSize: 16, fontWeight: '600', marginBottom: 10, color: C.text },
-    statsSubtitle: { fontSize: 14, color: C.icon, marginBottom: 6 },
-    statValue: { fontWeight: 'bold', color: C.tint },
-    error: { color: 'red', padding: 10, backgroundColor: '#FFE0E0', borderRadius: 8, marginBottom: 10 },
-  });
-}
+const styles = (C: typeof Colors.light) => StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 40,
+  },
+  headerSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: C.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 2,
+  },
+  greeting: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: C.text,
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 13,
+    color: C.textSecondary,
+  },
+  messageCard: {
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: C.border,
+    gap: 10,
+  },
+  messageTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: C.text,
+    textAlign: 'center',
+  },
+  messageBody: {
+    fontSize: 13,
+    color: C.textSecondary,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    flex: 1,
+  },
+  sectionCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.textSecondary,
+    backgroundColor: C.card,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  comercioScroll: {
+    marginBottom: 16,
+  },
+  comercioChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  comercioChipActive: {
+    backgroundColor: C.tint,
+  },
+  comercioChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  statNumber: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: C.textSecondary,
+  },
+  estadosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  estadoCard: {
+    width: '31%',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  estadoNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  estadoLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: C.text,
+    textAlign: 'center',
+  },
+  sectionBlock: {
+    marginBottom: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  sectionBlockTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: C.tint,
+    fontWeight: '600',
+  },
+  pedidosList: {
+    gap: 10,
+  },
+  pedidoItem: {
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.border,
+  },
+  pedidoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  pedidoId: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.text,
+  },
+  miniBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  miniBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  pedidoCliente: {
+    fontSize: 13,
+    color: C.textSecondary,
+    marginBottom: 6,
+  },
+  pedidoFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+  },
+  pedidoMonto: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.accent,
+  },
+  pedidoDate: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
+  dashboardLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+  },
+  dashboardLoadingText: {
+    fontSize: 13,
+    color: C.textSecondary,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: C.textSecondary,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: C.border,
+    marginVertical: 20,
+  },
+  optionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.card,
+    borderRadius: 14,
+    padding: 18,
+    gap: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  optionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  optionContent: {
+    flex: 1,
+  },
+  optionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+    marginBottom: 2,
+  },
+  optionSubtitle: {
+    fontSize: 12,
+    color: C.textSecondary,
+  },
+  addComercioBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderStyle: 'dashed',
+  },
+  addComercioText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+});

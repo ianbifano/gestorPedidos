@@ -1,10 +1,14 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
 import { useProductos } from '@/hooks/use-productos';
-import { useRouter } from 'expo-router';
-import React from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   StyleSheet,
@@ -14,112 +18,102 @@ import {
 } from 'react-native';
 
 export default function ProductosScreen() {
-  const { productos, loading, deleteProducto } = useProductos();
+  const { productos, loading, deleteProducto, fetchProductosByComercios } = useProductos();
+  const { comercios, loading: loadingComercios, fetchComercios } = useComercios();
   const { show: showToast } = useToast();
   const router = useRouter();
+  const scheme = useColorScheme();
+  const C = Colors[scheme];
+  const S = styles(C);
 
-  const handleDelete = async (id: number) => {
-    console.log('DELETE CLICK ID:', id);
+  const comercioIds = useMemo(() => comercios.map(c => c.id), [comercios]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchComercios();
+    }, [fetchComercios])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (comercioIds.length > 0) {
+        fetchProductosByComercios(comercioIds);
+      }
+    }, [comercioIds, fetchProductosByComercios])
+  );
+
+  const handleDelete = (id: number) => {
     if (!id || isNaN(id)) {
       showToast('ID inválido', 'error');
       return;
     }
 
-    const confirmar = window.confirm(
-      '¿Desea eliminar este producto?'
+    Alert.alert(
+      'Eliminar producto',
+      '¿Desea eliminar este producto?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteProducto(id);
+              showToast('Producto eliminado', 'success');
+            } catch {
+              showToast('Error al eliminar producto', 'error');
+            }
+          },
+        },
+      ]
     );
-
-    if (!confirmar) return;
-
-    try {
-      await deleteProducto(id);
-
-      console.log('DELETE OK');
-      showToast('Producto eliminado', 'success');
-    } catch (err) {
-      console.log('DELETE ERROR:', err);
-      showToast('Error al eliminar producto', 'error');
-    }
   };
 
-  if (loading) {
+  if (loadingComercios || loading) {
     return (
-      <ThemedView style={styles.center}>
-        <ActivityIndicator size="large" />
+      <ThemedView style={S.center}>
+        <ActivityIndicator size="large" color={C.tint} />
+      </ThemedView>
+    );
+  }
+
+  if (comercios.length === 0) {
+    return (
+      <ThemedView style={S.container}>
+        <View style={S.center}>
+          <Text style={S.emptyText}>Primero debes crear un comercio</Text>
+          <TouchableOpacity style={S.addButton} onPress={() => router.push('/crear-comercio')}>
+            <Text style={S.addButtonText}>+ Crear Comercio</Text>
+          </TouchableOpacity>
+        </View>
       </ThemedView>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => router.push('/nuevo-producto')}
-      >
-        <Text style={styles.addButtonText}>
-          + Nuevo Producto
-        </Text>
+    <ThemedView style={S.container}>
+      <TouchableOpacity style={S.addButton} onPress={() => router.push('/crear-producto')}>
+        <Text style={S.addButtonText}>+ Nuevo Producto</Text>
       </TouchableOpacity>
 
       <FlatList
         data={productos}
         keyExtractor={(item) => String(item.id)}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>
-            No hay productos registrados
-          </Text>
-        }
+        ListEmptyComponent={<Text style={S.emptyText}>No hay productos registrados</Text>}
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            {item.imagen && (
-              <Image
-                source={{ uri: item.imagen }}
-                style={styles.imagen}
-              />
-            )}
-
-            <Text style={styles.nombre}>
-              {item.nombre}
-            </Text>
-
-            <Text style={styles.precio}>
-              ${item.precio}
-            </Text>
-
-            <Text style={styles.estado}>
-              {item.disponible
-                ? 'Disponible'
-                : 'No disponible'}
-            </Text>
-
-            <View style={styles.actions}>
+          <View style={S.card}>
+            {item.imagen && <Image source={{ uri: item.imagen }} style={S.imagen} />}
+            <Text style={S.nombre}>{item.nombre}</Text>
+            <Text style={S.precio}>${item.precio}</Text>
+            <Text style={S.estado}>{item.disponible ? 'Disponible' : 'No disponible'}</Text>
+            <View style={S.actions}>
               <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => {
-                  router.push({
-                    pathname: '/editar-producto',
-                    params: {
-                      id: String(item.id),
-                      nombre: item.nombre,
-                      descripcion: item.descripcion || '',
-                      precio: String(item.precio),
-                    },
-                  });
-                }}
-              >
-                <Text style={styles.actionText}>
-                  Editar
-                </Text>
+                style={S.editButton}
+                onPress={() => router.push({ pathname: '/editar-producto', params: { id: String(item.id), nombre: item.nombre, descripcion: item.descripcion || '', precio: String(item.precio) } })}>
+                <Text style={S.actionText}>Editar</Text>
               </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDelete(Number(item.id))}
-              >
-                <Text style={styles.actionText}>
-                  Eliminar
-                </Text>
+              <TouchableOpacity style={S.deleteButton} onPress={() => handleDelete(Number(item.id))}>
+                <Text style={S.actionText}>Eliminar</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -129,88 +123,19 @@ export default function ProductosScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-
-  addButton: {
-    backgroundColor: '#007AFF',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-
-  addButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-
-  card: {
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#DDD',
-  },
-
-  imagen: {
-    width: '100%',
-    height: 180,
-    borderRadius: 8,
-    marginBottom: 10,
-    resizeMode: 'cover',
-  },
-
-  nombre: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-
-  precio: {
-    fontSize: 16,
-    marginTop: 4,
-  },
-
-  estado: {
-    marginTop: 4,
-    color: '#666',
-  },
-
-  actions: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 10,
-  },
-
-  editButton: {
-    backgroundColor: '#007AFF',
-    padding: 8,
-    borderRadius: 6,
-  },
-
-  deleteButton: {
-    backgroundColor: '#FF3B30',
-    padding: 8,
-    borderRadius: 6,
-  },
-
-  actionText: {
-    color: '#FFF',
-    fontWeight: '600',
-  },
-
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 30,
-    color: '#999',
-  },
+const styles = (C: typeof Colors.light) => StyleSheet.create({
+  container: { flex: 1, padding: 16 },
+  center: { flex: 1, justifyContent: 'center' },
+  addButton: { backgroundColor: C.tint, padding: 12, borderRadius: 8, marginBottom: 16, alignItems: 'center' },
+  addButtonText: { color: '#FFF', fontWeight: '600' },
+  card: { backgroundColor: C.card, padding: 16, borderRadius: 8, marginBottom: 12, borderWidth: 1, borderColor: C.border },
+  imagen: { width: '100%', height: 180, borderRadius: 8, marginBottom: 10, resizeMode: 'cover' },
+  nombre: { fontSize: 18, fontWeight: 'bold', color: C.text },
+  precio: { fontSize: 16, marginTop: 4, color: C.accent },
+  estado: { marginTop: 4, color: C.textSecondary },
+  actions: { flexDirection: 'row', marginTop: 12, gap: 10 },
+  editButton: { backgroundColor: C.tint, padding: 8, borderRadius: 6 },
+  deleteButton: { backgroundColor: C.danger, padding: 8, borderRadius: 6 },
+  actionText: { color: '#FFF', fontWeight: '600' },
+  emptyText: { textAlign: 'center', marginTop: 30, color: C.textSecondary },
 });

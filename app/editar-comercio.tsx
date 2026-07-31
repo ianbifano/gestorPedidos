@@ -2,38 +2,28 @@ import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useClientes } from '@/hooks/use-clientes';
+import { useComercios } from '@/hooks/use-comercios';
 import { Validators } from '@/hooks/validators';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
 
-export default function EditarClienteScreen() {
-  const { clientes, updateCliente } = useClientes();
+export default function EditarComercioScreen() {
+  const { updateComercio } = useComercios();
   const { show: showToast } = useToast();
   const router = useRouter();
   const params = useLocalSearchParams();
   const id = params.id ? parseInt(params.id as string) : null;
-  const [nombre, setNombre] = useState('');
-  const [telefono, setTelefono] = useState('');
+  const [nombre, setNombre] = useState((params.nombre as string) ?? '');
   const [loading, setLoading] = useState(false);
   const scheme = useColorScheme() ?? 'light';
   const C = Colors[scheme];
   const styles = useMemo(() => createStyles(C), [C]);
 
-  const cliente = id ? clientes.find((c) => c.id === id) : null;
-
-  useEffect(() => {
-    if (cliente) {
-      setNombre(cliente.nombre);
-      setTelefono(cliente.telefono || '');
-    }
-  }, [cliente]);
-
-  if (!id || !cliente) {
+  if (!id) {
     return (
       <ThemedView style={styles.container}>
-        <Text style={styles.notFound}>Cliente no encontrado</Text>
+        <Text style={styles.notFound}>Comercio no encontrado</Text>
         <TouchableOpacity style={styles.button} onPress={() => router.back()}>
           <Text style={styles.buttonText}>Volver</Text>
         </TouchableOpacity>
@@ -48,19 +38,13 @@ export default function EditarClienteScreen() {
       return;
     }
 
-    const validTelefono = Validators.telefono(telefono);
-    if (!validTelefono.valid) {
-      showToast(validTelefono.error || 'Error', 'error');
-      return;
-    }
-
     try {
       setLoading(true);
-      await updateCliente(id, nombre.trim(), telefono.trim() || undefined);
-      showToast('✓ Cliente actualizado correctamente', 'success');
+      await updateComercio(id, nombre.trim());
+      showToast('✓ Comercio actualizado correctamente', 'success');
       router.back();
     } catch (err) {
-      const mensajeError = err instanceof Error ? err.message : 'No se pudo actualizar el cliente';
+      const mensajeError = err instanceof Error ? err.message : 'No se pudo actualizar el comercio';
       showToast(mensajeError, 'error');
     } finally {
       setLoading(false);
@@ -69,24 +53,13 @@ export default function EditarClienteScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Text style={styles.label}>Nombre del cliente *</Text>
+      <Text style={styles.label}>Nombre del comercio *</Text>
       <TextInput
         style={styles.input}
         placeholder="Ingrese nombre"
         placeholderTextColor={C.icon}
         value={nombre}
         onChangeText={setNombre}
-        editable={!loading}
-      />
-
-      <Text style={styles.label}>Teléfono</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ingrese teléfono (opcional)"
-        placeholderTextColor={C.icon}
-        value={telefono}
-        onChangeText={setTelefono}
-        keyboardType="phone-pad"
         editable={!loading}
       />
 

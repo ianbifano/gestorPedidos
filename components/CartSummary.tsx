@@ -1,8 +1,12 @@
 import { Colors } from '@/constants/theme';
 import { useCart } from '@/contexts/CartContext';
+import { usePedidoDesdeCarrito } from '@/hooks/use-pedido-desde-carrito';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import React from 'react';
+import { useToast } from '@/components/Toast';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Pressable,
   SafeAreaView,
@@ -16,8 +20,31 @@ export function CartSummary() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { items, updateQuantity, removeItem, getSummary } = useCart();
+  const { procesarPedido, loading: procesando } = usePedidoDesdeCarrito();
+  const router = useRouter();
+  const { show: showToast } = useToast();
+  const [procesandoPedido, setProcesandoPedido] = useState(false);
 
   const summary = getSummary();
+
+  const handleProcesarPago = async () => {
+    try {
+      setProcesandoPedido(true);
+      const resultado = await procesarPedido();
+      const mensaje = resultado.cantidad === 1
+        ? `Tu pedido #${resultado.pedidoIds[0]} fue creado correctamente`
+        : `Se crearon ${resultado.cantidad} pedidos correctamente`;
+      showToast(mensaje, 'success');
+      router.push('/(tabs)/explore');
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : 'No se pudo procesar el pedido',
+        'error'
+      );
+    } finally {
+      setProcesandoPedido(false);
+    }
+  };
 
   const styles = StyleSheet.create({
     container: {
@@ -53,6 +80,12 @@ export function CartSummary() {
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
+      marginBottom: 2,
+    },
+    comercioNombre: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: colors.tint,
       marginBottom: 4,
     },
     productPrice: {
@@ -168,6 +201,9 @@ export function CartSummary() {
           <View style={styles.itemContainer}>
             <View style={styles.productInfo}>
               <Text style={styles.productName}>{item.product.nombre}</Text>
+              {item.product.comercio_nombre && (
+                <Text style={styles.comercioNombre}>{item.product.comercio_nombre}</Text>
+              )}
               <Text style={styles.productPrice}>
                 ${item.product.precio.toLocaleString('es-AR')} c/u
               </Text>
@@ -239,8 +275,15 @@ export function CartSummary() {
                 })}
               </Text>
             </View>
-            <Pressable style={styles.checkoutButton}>
-              <Text style={styles.checkoutButtonText}>Proceder al Pago</Text>
+            <Pressable
+              style={[styles.checkoutButton, procesandoPedido && { opacity: 0.6 }]}
+              onPress={handleProcesarPago}
+              disabled={procesandoPedido}>
+              {procesandoPedido ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.checkoutButtonText}>Proceder al Pago</Text>
+              )}
             </Pressable>
           </View>
         }

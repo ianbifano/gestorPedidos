@@ -2,7 +2,9 @@ import { Redirect, Stack, useSegments } from 'expo-router';
 import { ToastProvider } from '@/components/Toast';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { CartProvider } from '@/contexts/CartContext';
+import { ComerciosProvider } from '@/contexts/ComerciosContext';
 import { EstadosProvider } from '@/contexts/EstadosContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -38,7 +40,9 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <ThemeProvider>
       <CartProvider>
+        <ComerciosProvider>
         <ToastProvider>
           <AuthGuard>
             <Stack
@@ -58,15 +62,22 @@ export default function RootLayout() {
               />
 
               <Stack.Screen name="crear-pedido" options={{ headerTitle: 'Crear Pedido', presentation: 'modal', animationEnabled: true }} />
-              <Stack.Screen name="crear-cliente" options={{ headerTitle: 'Crear Cliente', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="editar-pedido" options={{ headerTitle: 'Editar Pedido', presentation: 'modal', animationEnabled: true }} />
-              <Stack.Screen name="editar-cliente" options={{ headerTitle: 'Editar Cliente', presentation: 'modal', animationEnabled: true }} />
               <Stack.Screen name="pedido-detalle" options={{ headerTitle: 'Detalle del Pedido', presentation: 'card', animationEnabled: true }} />
-              <Stack.Screen name="cliente-detalle" options={{ headerTitle: 'Detalle del Cliente', presentation: 'card', animationEnabled: true }} />
+              <Stack.Screen name="producto-detalle" options={{ headerTitle: 'Detalle del Producto', presentation: 'card', animationEnabled: true }} />
+              <Stack.Screen name="comercio-detalle" options={{ headerTitle: 'Detalle del Comercio', presentation: 'card', animationEnabled: true }} />
+              <Stack.Screen name="comercios" options={{ headerTitle: 'Mis Comercios', presentation: 'card', animationEnabled: true }} />
+              <Stack.Screen name="crear-comercio" options={{ headerTitle: 'Crear Comercio', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="editar-comercio" options={{ headerTitle: 'Editar Comercio', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="nuevo-producto" options={{ headerTitle: 'Nuevo Producto', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="crear-producto" options={{ headerTitle: 'Crear Producto', presentation: 'modal', animationEnabled: true }} />
+              <Stack.Screen name="editar-producto" options={{ headerTitle: 'Editar Producto', presentation: 'modal', animationEnabled: true }} />
             </Stack>
           </AuthGuard>
         </ToastProvider>
+        </ComerciosProvider>
       </CartProvider>
+      </ThemeProvider>
     </AuthProvider>
   );
 }
