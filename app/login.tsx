@@ -59,7 +59,6 @@ export default function LoginScreen() {
     try {
       setLoading(true);
       await signIn(normalizedEmail, password);
-      router.replace('/(tabs)' as any);
     } catch (error) {
       showError(getAuthErrorMessage(error));
     } finally {

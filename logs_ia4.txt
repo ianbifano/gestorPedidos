@@ -1,0 +1,1181 @@
+ ERROR  The action 'REPLACE' with payload {"name":"(tabs)","params":{"screen":"index","params":{}}} was not handled by any navigator.
+
+
+Thought: 903ms
+The user is showing an error message about a React Navigation error. The error says that the action 'REPLACE' with a payload was not handled by any navigator. This typically happens when trying to navigate/replace to a screen that doesn't exist in the navigation hierarchy, or when the navigation action is being dispatched incorrectly.
+
+Let me look at the codebase to understand what's going on.
+✓Explore Task — Explore navigation setup
+↳ 36 toolcalls · 1m 3s
+ctrl+x down view subagents
+Thought: 4.9s
+Let me analyze the error:
+
+The error says:
+The action 'REPLACE' with payload {"name":"(tabs)","params":{"screen":"index","params":{}}} was not handled by any navigator.
+
+So the REPLACE action is being dispatched with the name (tabs) and params { screen: "index" }. This is happening due to router.replace('/(tabs)') in login.tsx and register.tsx.
+
+Wait, the payload in the error says "name":"(tabs)" not "/(tabs)". That's interesting. The EXPONENT router transforms the path into screen names.
+
+Looking at how Expo Router works:
+- When you call router.replace('/(tabs)'), it dispatches a REPLACE action targeting the (tabs) screen in the Stack navigator.
+- The params are {"screen":"index","params":{}} because (tabs) is a nested navigator, and Expo Router automatically includes the initial route params.
+
+The issue is that this action is not being handled. This typically happens when:
+1. The screen name in the navigator doesn't match what's being dispatched
+2. The navigation state isn't ready
+3. The navigator hasn't mounted yet
+
+Looking at the _layout.tsx, the (tabs) screen IS registered in the Stack:
+
+<Stack.Screen name="(tabs)" options={{ headerShown: false, animationEnabled: false }} />
+
+So the screen exists. The problem might be related to the timing of the replace call. In login.tsx:
+
+await signIn(normalizedEmail, password);
+router.replace('/(tabs)' as any);
+
+Wait, but the error message says {"name":"(tabs)","params":{"screen":"index","params":{}}}. The REPLACE action targets (tabs) with params containing screen: 'index'. 
+
+The error "was not handled by any navigator" means React Navigation couldn't find a navigator that has a screen named (tabs).
+
+But wait - there might be another issue. In Expo Router, when you use router.replace('/(tabs)'), it uses the href resolution which converts /(tabs) to the group name (tabs). But maybe the issue is that the Stack navigator hasn't been fully initialized yet, or the screen name is slightly different.
+
+Actually, looking more carefully at this error pattern in Expo Router, this commonly happens when:
+1. The router.replace is called before the navigation is fully ready
+2. There's a mismatch between the route name and what's registered
+
+Let me look at the actual code in login.tsx to see the context around where router.replace is called.
+Let me look at the login screen code and the AuthGuard logic more closely.
+→Read app/login.tsx 
+→Read app/register.tsx 
+→Read app/_layout.tsx 
+Thought: 11.9s
+Now I understand the issue. Let me look at the AuthGuard:
+
+if (user && inAuthScreen) {
+    return <Redirect href="/(tabs)" />;
+}
+
+The Redirect component from Expo Router uses the same navigation mechanism. When the user is authenticated and on a login/register screen, it redirects to /(tabs).
+
+The error says:
+The action 'REPLACE' with payload {"name":"(tabs)","params":{"screen":"index","params":{}}} was not handled by any navigator.
+
+The issue is likely that the REPLACE action is being dispatched but the navigator can't handle it. This could happen when:
+
+1. The navigation state isn't ready yet - The router.replace is called before the navigation is fully initialized.
+2. The screen is being re-rendered/remounted - The AuthGuard redirect might cause issues.
+
+But actually, looking more carefully at the error, it seems like the REPLACE action is being generated correctly targeting the (tabs) screen in the Stack, with params to navigate to the index tab. The issue is "was not handled by any navigator" which means React Navigation couldn't find a navigator that handles this action.
+
+This commonly happens in Expo Router when:
+- The router is called before the navigation container is fully mounted
+- There's a race condition where the screen unmounts while navigation is happening
+
+Wait, let me think about this differently. The AuthGuard renders a <Redirect href="/(tabs)" /> when the user is on auth screens AND is authenticated. This Redirect component will dispatch the REPLACE action. If the user is already authenticated when the app starts, the AuthGuard immediately shows the Redirect, which might happen before the Stack navigator is fully mounted.
+
+But also, there's a timing issue in login.tsx:
+await signIn(normalizedEmail, password);
+router.replace('/(tabs)' as any);
+
+After signIn completes, the user state changes. This triggers a re-render of AuthGuard. The AuthGuard sees user && inAuthScreen and returns <Redirect href="/(tabs)" />. Meanwhile, router.replace('/(tabs)') is also called.
+
+So both the router.replace call AND the <Redirect> component are trying to navigate to /(tabs). The AuthGuard's Redirect might cause the login screen to unmount before the router.replace fully executes, leading to the "not handled by any navigator" error because the screen that initiated the replace is no longer mounted.
+
+The fix would be to NOT call router.replace manually in login.tsx and register.tsx since the AuthGuard will handle the redirect automatically when the user state changes. OR, we can use a different approach.
+
+Actually, looking at it more carefully:
+
+1. signIn updates the auth context, setting user to the logged-in user
+2. This triggers a re-render of AuthGuard
+3. AuthGuard sees user is truthy and inAuthScreen is true, so it renders <Redirect href="/(tabs)" />
+4. The <Redirect> component dispatches the REPLACE action
+
+But ALSO at the same time, router.replace('/(tabs)') is called in the handleLogin function.
+
+The issue is that both the AuthGuard's Redirect and the explicit router.replace are competing. The router.replace might be dispatched but then the screen gets unmounted by the AuthGuard's Redirect before the action is processed.
+
+The simplest fix: Remove the explicit router.replace calls in login.tsx and register.tsx, because the AuthGuard will automatically redirect when the user state changes.
+
+Wait, but there could be another issue. The <Redirect> component might also cause the same problem. Let me check if it's actually the AuthGuard's Redirect that's causing the issue or the explicit router.replace.
+
+Actually, looking at the error message more carefully:
+The action 'REPLACE' with payload {"name":"(tabs)","params":{"screen":"index","params":{}}} was not handled by any navigator.
+
+The payload has name: "(tabs)" with params containing screen: "index". This format (with params.screen) is how Expo Router handles nested navigator targeting. The (tabs) screen in the Stack has params that specify which tab screen to show.
+
+The error could be caused by a race condition. When the user logs in:
+1. signIn sets the user state
+2. AuthGuard re-renders and returns <Redirect href="/(tabs)" />
+3. React starts rendering the Redirect, which eventually causes the Stack to navigate to (tabs)
+4. But the login screen is also trying to call router.replace('/(tabs)') 
+5. These two competing navigation actions could interfere
+
+The best approach is to remove the explicit router.replace calls in login.tsx and register.tsx. The AuthGuard will handle the redirect automatically.
+
+But wait, there's a subtlety. In the register.tsx case:
+onClose: () => router.replace((result.needsEmailConfirmation ? '/login' : '/(tabs)') as any),
+
+This is in the onClose of the success dialog. If the user needs email confirmation, it goes to /login. If not, it goes to /(tabs). But after registration, the AuthGuard would see inAuthScreen is true and user is truthy (since signUp sets the user), so it would redirect to /(tabs) anyway.
+
+Hmm, actually I don't know if signUp sets the user or not. It depends on the implementation. Let me check the AuthContext.
+
+Let me also look at another possibility: the problem could be that the Stack navigator's (tabs) screen uses the name (tabs) but Expo Router might have a different internal representation. In Expo Router v3+, route groups like (tabs) in app/(tabs)/ are referenced with parentheses. The name="(tabs)" in Stack.Screen matches the directory app/(tabs).
+
+The error might be happening because of how the navigation state is structured. In Expo Router, the navigation tree might not be fully initialized when the replace is called.
+
+Let me check the AuthContext to understand the signIn behavior.
+→Read contexts/AuthContext.tsx 
+Thought: 10.0s
+Now I understand the full picture.
+
+When signIn is called:
+1. supabase.auth.signInWithPassword succeeds
+2. The Supabase auth state change listener fires, updating the session
+3. This triggers a re-render in AuthGuard, which now sees user is truthy and inAuthScreen is true
+4. AuthGuard renders <Redirect href="/(tabs)" />
+5. This Redirect component dispatches a REPLACE action
+
+But ALSO, router.replace('/(tabs)') is called in the handleLogin function.
+
+Both the AuthGuard's Redirect and the explicit router.replace are trying to navigate. This creates a race condition.
+
+The core issue is that after signIn completes, the auth state changes synchronously (triggered by the onAuthStateChange listener). The component re-renders and the AuthGuard's <Redirect> starts rendering. Meanwhile, the router.replace call in handleLogin is still executing.
+
+The problem is that when AuthGuard renders <Redirect href="/(tabs)" />, it likely causes the login screen to unmount (since it's replaced by the Redirect). If the login screen unmounts while router.replace is being processed, the navigation action might fail because the navigator that the screen belongs to is no longer active.
+
+The fix: Remove the explicit router.replace call from login.tsx after signIn, since the AuthGuard will handle the redirect automatically.
+
+For register.tsx, the same issue exists with the onClose callback. But in this case, the behavior is more nuanced - when the dialog closes, it might navigate to /(tabs) or /login depending on email confirmation. If we remove the router.replace and let AuthGuard handle it, we need to make sure the AuthGuard handles the post-registration state correctly.
+
+Looking at signUp:
+signUp: async (username: string, email: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({...});
+  if (error) throw error;
+  return {
+    needsEmailConfirmation: !data.session,
+  };
+},
+
+If needsEmailConfirmation is true, that means data.session is null, so user will be null (since there's no session). In this case, after registration, the user is NOT authenticated, so AuthGuard won't redirect - the user stays on the register screen. The onClose callback navigates to /login which is correct.
+
+If needsEmailConfirmation is false, the user IS authenticated (session exists), so AuthGuard will redirect to /(tabs).
+
+So for register.tsx, we need to keep the onClose navigation, but we should use a different approach that doesn't cause the race condition. Instead of router.replace, we could simply let the AuthGuard handle the redirect when appropriate.
+
+Actually wait, the problem in register.tsx is:
+1. The success dialog shows up
+2. User closes the dialog
+3. closeDialog is called, which calls dialog.onClose?.()
+4. dialog.onClose does router.replace(...)
+5. But at this point, the register screen is still mounted, so it should work fine
+
+But still, the AuthGuard would also try to redirect. There could be a race condition.
+
+Let me think about the best fix:
+
+For login.tsx: Remove the router.replace('/(tabs)') call. The AuthGuard's <Redirect> will handle it.
+
+For register.tsx:
+- If user needs email confirmation: navigate to /login (router.replace is fine here since AuthGuard won't redirect - user is not authenticated)
+- If user doesn't need email confirmation: AuthGuard will redirect to /(tabs) automatically. So we don't need the explicit router.replace.
+
+BUT - there's a timing concern. When does AuthGuard re-render? It re-renders when the auth state changes (session updates). After signUp, if needsEmailConfirmation is false (session exists), the auth state has already changed, so AuthGuard would already be rendering <Redirect href="/(tabs)" />. But the dialog is still open, so the register screen hasn't been replaced yet. The Redirect doesn't immediately replace; it waits for the next render cycle.
+
+Actually, the way <Redirect> works in Expo Router:
+- It dispatches a navigation action to replace the current screen
+- This happens during render/effect
+
+So the AuthGuard's Redirect would also dispatch a REPLACE action, potentially at the same time as the explicit router.replace. This dual navigation is the problem.
+
+So my recommended fix:
+1. In login.tsx: Remove router.replace('/(tabs)' as any) - AuthGuard handles it
+2. In register.tsx: 
+   - If needsEmailConfirmation, keep router.replace('/login')
+   - If not, remove the router.replace since AuthGuard handles it
+
+Let me also think about whether there's a different issue. The error message says the action was not handled by any navigator. This could also be because the Stack Screen (tabs) is defined inside the Stack, but maybe the router is trying to replace to a route when the navigation container isn't fully mounted.
+
+In Expo Router, the <Redirect> component is the preferred way to handle auth-based redirects. The explicit router.replace calls when the auth state changes simultaneously with the Redirect can cause conflicts.
+
+Let me make the fix.
+The issue is a race condition: after signIn/signUp, the AuthGuard's <Redirect> and the explicit router.replace both try to navigate simultaneously, causing conflicts.
+The fix: remove the explicit router.replace calls in login.tsx and register.tsx — the AuthGuard already handles the redirect automatically.
+← Edit app/login.tsx
+
+try {
+  setLoading(true);
+  await signIn(normalizedEmail, password);
+  router.replace('/(tabs)' as any);
+} catch (error) {
+  showError(getAuthErrorMessage(error));
+} finally {
+  setLoading(false);
+Thought: 3.1s
+Now for register.tsx. The onClose callback handles two cases:
+1. needsEmailConfirmation: navigates to /login - this is needed since user is not authenticated
+2. No confirmation needed: navigates to /(tabs) - AuthGuard handles this
+
+Wait, but in register.tsx, the dialog onClose is called when the user closes the success dialog. At that point:
+- If the user doesn't need email confirmation, the session exists, so AuthGuard has already re-rendered with <Redirect href="/(tabs)" />. But the dialog overlay is covering the register screen. When the dialog closes, both the Redirect and any explicit router.replace would fire.
+
+Actually, the dialog is part of the register screen's render. The AuthGuard wraps around everything, including the dialog. So when the dialog is open and the user clicks close:
+1. closeDialog is called
+2. onClose?.() is called, which calls router.replace(...)
+3. The dialog state is cleared, re-rendering the register screen without the dialog
+4. AuthGuard re-renders and if user is authenticated, shows <Redirect />
+
+So both navigation actions fire. The issue is the same race condition.
+
+For the case where needsEmailConfirmation is true: the user is NOT authenticated (no session), so AuthGuard won't redirect. We can keep the explicit navigation to /login.
+
+For the case where needsEmailConfirmation is false: the user IS authenticated, AuthGuard will redirect. We should remove the explicit router.replace.
+
+Let me update register.tsx to handle this properly.
+← Edit app/register.tsx
+    message: result.needsEmailConfirmation
+      ? 'Revise su correo electrónico para confirmar la cuenta antes de iniciar sesión.'
+      : 'Su cuenta fue creada correctamente.',
+    type: 'success',
+    onClose: () => router.replace((result.needsEmailConfirmation ? '/login' : '/(tabs)') as any),
+    onClose: result.needsEmailConfirmation ? () => router.replace('/login' as any) : undefined,
+  });
+} catch (error) {
+  showError(getRegisterErrorMessage(error));
+} finally {
+Thought: 695ms
+Good. Now the register.tsx will:
+1. If needsEmailConfirmation: navigate to /login on dialog close
+2. If not: don't navigate explicitly - AuthGuard will handle the redirect
+
+Let me verify the changes look correct.
+Let me verify the changes:
+→Read app/login.tsx [offset=59, limit=10]
+→Read app/register.tsx [offset=83, limit=15]
+Thought: 26.3s
+Wait, there's an issue with the register.tsx change. When needsEmailConfirmation is false, onClose is undefined. But what happens when the dialog closes? The closeDialog function does:
+
+const closeDialog = () => {
+    const onClose = dialog.onClose;
+    setDialog({ visible: false, message: '', type: 'error' });
+    onClose?.();
+};
+
+If onClose is undefined, it just closes the dialog and doesn't navigate. Then the AuthGuard (which sees the user is authenticated) will render <Redirect href="/(tabs)" />, which will handle the navigation. This should work correctly.
+
+But I should think about whether there could be a flash or something. When the dialog closes, the register screen is still rendered briefly before AuthGuard redirects. That should be fine - the AuthGuard's Redirect will fire on the next render cycle.
+
+However, wait - the closeDialog function is defined with dialog.onClose captured at the time closeDialog is called. The dialog state is:
+
+const [dialog, setDialog] = useState<DialogState>({
+    visible: false,
+    message: '',
+    type: 'error',
+});
+
+And then it's set to:
+setDialog({
+    visible: true,
+    title: 'Cuenta creada',
+    message: ...,
+    type: 'success',
+    onClose: result.needsEmailConfirmation ? () => router.replace('/login' as any) : undefined,
+});
+
+When closeDialog is called, it reads dialog.onClose (from the current state). If it's undefined, onClose?.() does nothing. Good.
+
+Actually, there's still a potential issue: the router.replace import is still in the file. Let me check if it's still used elsewhere. Actually, looking at register.tsx line 181:
+<Text style={S.link} onPress={() => router.push('/login' as any)}>
+
+Yes, router is still used. And in login.tsx, looking at line 124:
+<Text style={S.link} onPress={() => router.push('/register' as any)}>
+
+So router is still used in login.tsx. Let me check if there's an unused variable warning for router in login.tsx now.
+
+Looking at login.tsx, the router is used on line 124 (router.push). So it's still used. Good.
+
+Wait, actually in login.tsx, let me check: router is used only for router.push('/register' as any) now. That's fine, it's still in use.
+
+Now let me think if there's another approach. The error could also be caused by the AuthGuard's Redirect component itself if it fires before the navigation tree is ready. But since this only happens after the user is on the login screen (meaning the navigation tree IS mounted), the AuthGuard's Redirect should work fine.
+
+Actually, I should verify one more thing - the closeDialog function in register.tsx. Looking at it more carefully:
+
+const closeDialog = () => {
+    const onClose = dialog.onClose;
+    setDialog({ visible: false, message: '', type: 'error' });
+    onClose?.();
+};
+
+When onClose is undefined (for !needsEmailConfirmation), it just calls setDialog to hide the dialog. Then on the next render, the register screen renders without the dialog. But AuthGuard sees user is truthy, so it returns <Redirect href="/(tabs)" /> instead of the children, which replaces the register screen with the tabs.
+
+This approach should work. But there might be a brief flash of the register screen without the dialog before the Redirect fires. That should be fine.
+
+Let me also consider if I should simplify even further and just let the AuthGuard handle ALL redirects consistently. In register.tsx, when needsEmailConfirmation is true, we navigate to /login explicitly. But the AuthGuard won't redirect because user is null (no session). So the user stays on /login after the dialog closes. This is correct.
+
+I think the changes look good. Let me verify once more.
+
+Wait, I should also check if there's a potential issue with the closeDialog and the onClose callback calling router.replace. If result.needsEmailConfirmation is true:
+1. User sees success dialog
+2. User closes dialog
+3. closeDialog is called
+4. onClose is () => router.replace('/login' as any)
+5. onClose?.() calls router.replace('/login')
+6. setDialog(...) is called to close the dialog
+7. React re-renders
+8. The register screen is replaced by the login screen
+
+This should work fine. The router.replace navigates to /login which is another screen in the Stack.
+
+The only remaining concern is that router.replace could also fail if the screen unmounts before the navigation completes, but in this case (no AuthGuard redirect since user is not authenticated), it should be fine.
+
+For the case where needsEmailConfirmation is false:
+1. User sees success dialog
+2. User closes dialog
+3. closeDialog is called
+4. onClose is undefined, so onClose?.() does nothing
+5. setDialog(...) is called to close the dialog
+6. React re-renders
+7. AuthGuard sees user && inAuthScreen -> renders <Redirect href="/(tabs)" /> (or actually, it might already have rendered this during the previous render...)
+
+Hmm, let me think about this more carefully. After signUp completes:
+- The auth state changes (session is set)
+- AuthGuard re-renders and sees user && inAuthScreen is true
+- AuthGuard returns <Redirect href="/(tabs)" />
+- But the register screen is still showing because the dialog is open
+
+Wait, actually the AuthGuard wraps the entire Stack. When AuthGuard returns <Redirect href="/(tabs)" />, it replaces the entire Stack content with the Redirect component. So the dialog and register screen are no longer rendered. The <Redirect> dispatches the navigation action to go to /(tabs).
+
+But wait - the dialog's onClose is captured from a previous state/setState. The dialog is rendered as part of the register screen. If the register screen is no longer rendered (because AuthGuard replaced it with Redirect), then the dialog can't be interacted with.
+
+But actually, the dialog is a modal rendered within the register screen. If AuthGuard returns Redirect instead of children (which contains the Stack), the entire Stack is replaced, including the register screen and its dialog. So the user would never see/close the dialog.
+
+Wait, that's not quite right either. Let me re-read the AuthGuard:
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const segments = useSegments();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  const inAuthScreen = segments[0] === 'login' || segments[0] === 'register';
+
+  if (!user && !inAuthScreen) {
+    return <Redirect href="/login" />;
+  }
+
+  if (user && inAuthScreen) {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  if (user) {
+    return <EstadosProvider>{children}</EstadosProvider>;
+  }
+
+  return <>{children}</>;
+}
+
+The rendering:
+<AuthProvider>
+  <ThemeProvider>
+    <CartProvider>
+      <ComerciosProvider>
+        <ToastProvider>
+          <AuthGuard>
+            <Stack>...</Stack>
+          </AuthGuard>
+        </ToastProvider>
+      </ComerciosProvider>
+    </CartProvider>
+  </ThemeProvider>
+</AuthProvider>
+
+So AuthGuard wraps the Stack. When user && inAuthScreen is true, it returns <Redirect href="/(tabs)" /> INSTEAD of <Stack>...</Stack>. This means the entire Stack navigator is replaced by the Redirect component.
+
+The issue is: after signUp completes with no email confirmation needed, the auth state change listener fires and updates the session. This causes a React state update. But the signUp function is still running (it's in a try block). The state update triggers a re-render of AuthGuard, which now returns Redirect instead of the Stack.
+
+But the dialog's onClose is set during the same render cycle's state update (the setDialog call). The dialog is part of the register screen which is inside the Stack. If the Stack is no longer rendered, the dialog can't be closed by the user, so the onClose callback would never fire.
+
+Wait, this is getting complicated. Let me think step by step:
+
+1. User clicks "Registrarse"
+2. handleRegister is called
+3. setLoading(true) - re-render with loading indicator
+4. signUp() is called
+5. Supabase auth.signUp fires
+6. If successful with session, the onAuthStateChange listener fires, updating session state
+7. This triggers a re-render of AuthGuard
+8. AuthGuard now sees user is truthy and inAuthScreen is true (segments0 === 'register')
+9. AuthGuard returns <Redirect href="/(tabs)" />
+10. The Stack is no longer rendered - the register screen (with loading indicator) disappears
+11. The try block continues with const result = await signUp(...)
+12. result.needsEmailConfirmation is false
+13. setDialog(...) is called - but the register screen is no longer mounted
+14. This is a state update on an unmounted component - React will handle it gracefully
+
+Actually, this means the success dialog is NEVER shown in the no-confirmation case! The AuthGuard immediately redirects to /(tabs).
+
+So in the current flow (without my changes), when needsEmailConfirmation is false:
+- The AuthGuard redirects immediately (step 9)
+- The register screen unmounts
+- The router.replace in the onClose callback would never fire because the dialog is never shown
+
+But the error in the original code is still: when router.replace('/(tabs)') fires in login.tsx, the AuthGuard also fires <Redirect href="/(tabs)" />, and they conflict.
+
+Hmm wait, let me re-examine the login.tsx flow:
+
+1. User clicks "Iniciar Sesión"
+2. handleLogin is called
+3. setLoading(true)
+4. signIn(email, password) is called
+5. supabase.auth.signInWithPassword succeeds
+6. onAuthStateChange listener fires, setting session
+7. AuthGuard re-renders, sees user && inAuthScreen (login is auth screen), returns <Redirect href="/(tabs)" />
+8. The Stack is replaced by Redirect
+9. The login screen unmounts
+10. Back in the try block, await signIn(...) returns (resolves)
+11. router.replace('/(tabs)') is called
+12. But the login screen that called this is already unmounted!
+13. React Navigation can't find the navigator to handle the action -> ERROR
+
+That's the root cause! The router.replace is called on a screen that has already been unmounted by the AuthGuard's redirect.
+
+My fix is correct. By removing the explicit router.replace from login.tsx, the AuthGuard's <Redirect> handles it cleanly.
+
+And for register.tsx, the same issue applies. But since the success dialog onClose navigates, and by the time the dialog closes the component may have been unmounted... Actually, in the needsEmailConfirmation case, the session is null, so AuthGuard won't redirect. The register screen stays mounted, and the dialog can be closed, navigating to /login safely.
+
+Let me verify: when needsEmailConfirmation is true, data.session is null. So the onAuthStateChange listener might fire with a null session, or might not fire at all (since no actual auth state change occurred). Either way, user will be null, and AuthGuard won't redirect.
+
+So my fix is correct. Let me also check if the implicit router import is still needed in login.tsx. Actually, it's used on line 124 for router.push('/register'). So it's fine.
+
+And in register.tsx, router is used on line 181 for router.push('/login'). So it's fine too.
+
+Let me also think: there might be another place where this error can occur. Looking at the AuthGuard itself:
+
+if (user && inAuthScreen) {
+    return <Redirect href="/(tabs)" />;
+}
+
+The <Redirect> component in Expo Router also dispatches a REPLACE action. If the navigation tree isn't ready (e.g., on initial load when the user is already authenticated), this could also fail.
+
+But this is the recommended pattern in Expo Router, so it should work. The issue was specifically with having BOTH the manual router.replace AND the Redirect competing.
+
+So my fix should resolve the issue.
+
+Wait - one more thing to check. The closeDialog function in register.tsx accesses dialog.onClose. Let me trace through it:
+
+const closeDialog = () => {
+    const onClose = dialog.onClose;
+    setDialog({ visible: false, message: '', type: 'error' });
+    onClose?.();
+};
+
+When the dialog is set with:
+onClose: result.needsEmailConfirmation ? () => router.replace('/login' as any) : undefined,
+
+If needsEmailConfirmation is false, onClose is undefined. When closeDialog is called, dialog.onClose is undefined, onClose?.() does nothing.
+
+This is fine. When the dialog closes, the register screen hides the dialog. AuthGuard will then handle the redirect in a subsequent render.
+
+Now, could there be a brief flash? When the dialog closes:
+1. setDialog is called with visible: false
+2. React re-renders the register screen without the dialog
+3. AuthGuard checks: user is truthy, inAuthScreen is true (segments0 === 'register')
+4. AuthGuard returns <Redirect href="/(tabs)" />
+
+This all happens synchronously in the render phase, so there shouldn't be a visible flash.
+
+OK, I'm satisfied the fix is correct.
+
+Let me also check if there's a case where router.replace in register.tsx's closeDialog could cause issues. When needsEmailConfirmation is true:
+1. closeDialog is called
+2. onClose is () => router.replace('/login' as any)
+3. setDialog is called to hide dialog
+4. router.replace('/login') navigates to login
+5. React re-renders the register screen briefly
+6. AuthGuard sees user is null (no session), inAuthScreen is true
+7. AuthGuard renders <Stack>...</Stack> but the active route is now /login
+
+This should work fine because the route change happens first (via router.replace), and then the re-render confirms the login screen is showing.
+
+I'm confident the fix is correct.
+Changes look correct. Here's the summary of the problem and fix:
+Root cause: After signIn completes, two things happen simultaneously:
+1. The AuthGuard detects the authenticated user and renders <Redirect href="/(tabs)" />
+2. The explicit router.replace('/(tabs)') in handleLogin fires
+The AuthGuard's <Redirect> replaces the entire Stack, unmounting the login screen before its router.replace can be processed — causing the "not handled by any navigator" error.
+Fix:
+- login.tsx:62 — Removed router.replace('/(tabs)'); the AuthGuard's <Redirect> handles it automatically.
+- register.tsx:94 — Only navigate to /login when email confirmation is needed (user isn't authenticated yet). When no confirmation is needed, the AuthGuard redirects automatically.
+▣  Build · Big Pickle · 2m 28s
+cuando un usuario no tiene comercios y crea un comercio. tiene que usar el useEffect para recargar considerando que es dueño
+Thought: 1.3s
+The user is saying that when a user who doesn't have any commerce creates one, they need to use useEffect to reload/refresh considering they are now a "dueño" (owner). 
+
+This is about the useFocusEffect or useEffect in the tab layout (app/(tabs)/_layout.tsx) that shows "Pedidos" vs "Mis Compras" based on whether the user is a dueno (owner). Let me look at the tabs layout to understand how the role is determined and when it refreshes.
+→Read app/(tabs)/_layout.tsx 
+→Read contexts/AuthContext.tsx [offset=57, limit=15]
+Thought: 4.2s
+Now I understand the issue. When a user creates a commerce:
+
+1. The user goes to create a commerce (probably from a "Crear Comercio" screen)
+2. After creating it, they may be redirected back to the tabs
+3. The (tabs)/_layout.tsx uses useFocusEffect to call fetchComercios(), which fetches the list of comercios
+4. tieneComercios is computed from comercios.length > 0
+5. This determines whether the explore tab shows "Pedidos" (if they have comercios) or "Mis Compras"
+
+But the issue the user is mentioning is about the role (dueno/cliente). The role comes from AuthContext via useAuth(). Let me check:
+
+Looking at AuthContext.tsx, the role is set by fetchRole which queries users_x_comercios to see if the user has any commerce with role 'dueno'. The fetchRole is called:
+1. On initial mount (inside the useEffect on line 63)
+2. On auth state change (line 76-83)
+3. Via refreshRole function
+
+But when a user creates their first commerce (comercio), the users_x_comercios table gets a new entry with rol='dueno'. However, fetchRole is NOT called again. So role remains 'cliente' until either:
+- The app is reloaded
+- Some code explicitly calls refreshRole()
+
+The isDueno flag in AuthContext drives... let me see what uses it.
+
+Let me check the explore.tsx (the tab that changes based on role) and also see where isDueno/role is used.
+
+The fix should be: after creating a commerce, call refreshRole() so that the role is updated to 'dueno'. The commerce creation flow probably redirects back to the tabs, where the useFocusEffect refetches comercios but doesn't refresh the role.
+
+Let me look at the commerce creation screen and the explore screen.
+✱Grep "isDueno|role|refreshRole" (25 matches)
+→Read app/(tabs)/explore.tsx 
+→Read app/crear-comercio.tsx 
+Thought: 2.4s
+Now I understand the full picture. Let me also check the useComercios hook to see how createComercio works and what it does after creation.
+
+When a user creates their first commerce:
+1. createComercio(nombre) is called
+2. This probably inserts a record in comercios table and also in users_x_comercios (assigning 'dueno' role)
+3. After creation, router.back() navigates back to the tabs
+4. The useFocusEffect in (tabs)/_layout.tsx calls fetchComercios() which refreshes the list of comercios
+5. tieneComercios becomes true
+6. But the role in AuthContext is still 'cliente' because fetchRole hasn't been called again
+7. isDueno in the explore screen and other screens still returns false
+8. The tab title changes from "Mis Compras" to "Pedidos" (because tieneComercios changed)
+9. But the explore screen shows "Mis Compras" view (because isDueno is false)
+
+So the fix is: after creating a commerce, call refreshRole() to update the role. This should be done in crear-comercio.tsx after createComercio succeeds.
+
+Let me look at useComercios to see if it already does something with the role.
+→Read hooks/use-comercios.ts 
+Thought: 289ms
+It re-exports from ComerciosContext. Let me read that.
+→Read contexts/ComerciosContext.tsx 
+Thought: 2.7s
+Now I can see the issue clearly.
+
+After createComercio succeeds:
+1. A new commerce is created in comercios table
+2. A link is created in users_x_comercios with rol: 'dueno'
+3. fetchComercios() is called to refresh the commerces list
+4. router.back() is called to go back to the tabs
+
+But the problem is that AuthContext's role is still 'cliente'. The role is determined by fetchRole which checks users_x_comercios for any 'dueno' role. Even though the commerce was created and the link was inserted, fetchRole was never called again.
+
+The (tabs)/_layout.tsx already has useFocusEffect that calls fetchComercios(), which refreshes comercios and thus tieneComercios. But the role/isDueno flag comes from AuthContext, which isn't refreshed.
+
+The fix: In crear-comercio.tsx, after successfully creating the commerce, call refreshRole() from useAuth(). This will update the role to 'dueno'.
+
+Similarly, if there's an editar-comercio.tsx, we might need it there too, but it's more about creating the first commerce.
+
+Let me also check if deleteComercio should also refresh the role (in case the user deletes their only commerce). But the user specifically asked about creating a commerce.
+
+Let me make the fix.
+The issue: after creating the first commerce, createComercio inserts the 'dueno' role in users_x_comercios, but AuthContext's role (and thus isDueno) is never refreshed. The commerce list is refetched via useFocusEffect, but the role stays 'cliente'.
+The fix: call refreshRole() after successfully creating a commerce.
+←Edit app/crear-comercio.tsx 
+Thought: 1.7s
+Right, useAuth is already imported. I just need to add refreshRole to the destructuring and call it after creation.
+
+Let me look at the current code again:
+
+import { useRouter } from 'expo-router';
+
+The imports already include useAuth from the existing code (line is shown in the file but not specifically mentioned). Let me re-read the file to see the current imports more carefully.
+
+Actually, looking at the file content I already read:
+4: import { useColorScheme } from '@/hooks/use-color-scheme';
+5: import { useComercios } from '@/hooks/use-comercios';
+6: import { Validators } from '@/hooks/validators';
+7: import { useRouter } from 'expo-router';
+
+There's no useAuth import in crear-comercio.tsx. But wait, I didn't see one. Let me check... No, it doesn't import useAuth. I need to add it.
+← Edit app/crear-comercio.tsx
+import { ThemedView } from '@/components/themed-view';
+import { useToast } from '@/components/Toast';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
+import { Validators } from '@/hooks/validators';
+import { useRouter } from 'expo-router';
+Thought: 558ms
+Now I need to destructure refreshRole from useAuth() and call it after creating the commerce. Let me update the component.
+→Read app/crear-comercio.tsx [offset=11, limit=35]
+Thought: 430ms
+Now I need to:
+1. Add refreshRole to the useAuth() destructuring
+2. Call refreshRole() after createComercio succeeds
+
+Let me make both edits.
+← Edit app/crear-comercio.tsx
+export default function CrearComercioScreen() {
+  const [nombre, setNombre] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { createComercio, error } = useComercios();
+  const { refreshRole } = useAuth();
+  const { show: showToast } = useToast();
+  const router = useRouter();
+  const scheme = useColorScheme() ?? 'light';
+  const C = Colors[scheme];
+Thought: 381ms
+Now add the refreshRole call after the commerce is created.
+← Edit app/crear-comercio.tsx
+  setLoading(true);
+  console.log('[CREAR_COMERCIO] calling createComercio with:', nombre.trim());
+  const nuevo = await createComercio(nombre.trim());
+  console.log('[CREAR_COMERCIO] createComercio OK, data:', nuevo);
+  await refreshRole();
+  showToast('✓ Comercio creado correctamente', 'success');
+  router.back();
+} catch (err) {
+  const mensajeError = err instanceof Error ? err.message : (error || 'No se pudo crear el comercio');
+Thought: 195ms
+Let me verify the final state of the file to make sure everything looks correct.
+Let me verify the final result:
+→Read app/crear-comercio.tsx 
+Thought: 5.9s
+The changes look good. Let me now also consider the editar-comercio.tsx and deleteComercio case. When editing a commerce, the user is already a dueno, so refreshRole isn't needed there. When deleting, if the user deletes their only commerce, their role should become 'cliente'. But the user specifically asked about creating a commerce, so I'll focus on that.
+
+Let me also check if there's a nuevo-producto.tsx or similar that might need the same treatment... Actually, the user specifically asked about creating a commerce.
+
+Let me also think: should I also update (tabs)/_layout.tsx to call refreshRole in its useFocusEffect? That way whenever the tabs come into focus, the role is refreshed. This would be a more comprehensive fix.
+
+Looking at (tabs)/_layout.tsx:
+const { signOut } = useAuth();
+
+It doesn't use refreshRole or isDueno. It uses useComercios() which calls fetchComercios() on focus. But the isDueno flag used in explore.tsx, catalogo.tsx, etc. comes from useAuth().
+
+The (tabs)/_layout.tsx determines tieneComercios = comercios.length > 0 which is already refreshed by useFocusEffect calling fetchComercios(). But the isDueno flag doesn't get refreshed because it's in AuthContext.
+
+One approach: also add refreshRole() to the useFocusEffect in (tabs)/_layout.tsx. This way, whenever the tabs come into focus, the role is refreshed.
+
+But that might be overkill - it would query the database on every focus event. For now, the targeted fix in crear-comercio.tsx is fine.
+
+However, there's another consideration: if the commerce creation redirects back to the tabs and the useFocusEffect fires (which calls fetchComercios()), the isDueno might still be stale. The refreshRole I added fires before router.back(), so by the time the tabs screen re-focuses, the role will already be 'dueno'.
+
+Let me also check if there are any other screens where a commerce can be created or where refreshRole should be called. Looking at the commerce-related screens: crear-comercio.tsx is the only one that creates a commerce. There's also nuevo-producto.tsx, crear-producto.tsx, editar-producto.tsx etc., but those are for products, not commerces.
+
+I think the fix is complete. Let me verify there are no type errors by checking if refreshRole is properly typed in the context.
+
+From AuthContext:
+type AuthContextValue = {
+  ...
+  refreshRole: () => Promise<void>;
+  ...
+};
+
+And in crear-comercio.tsx, I have await refreshRole(); which is correct.
+
+All good.
+The fix adds refreshRole() from AuthContext after createComercio succeeds. Now when a user creates their first commerce:
+1. createComercio inserts the commerce + 'dueno' role in users_x_comercios
+2. refreshRole() re-queries the DB and updates the role to 'dueno'
+3. The (tabs) layout re-renders and isDueno is now true across all screens
+4. router.back() goes back to tabs — the tab title shows "Pedidos", the explore screen shows owner orders, etc.
+▣  Build · Big Pickle · 1m 3s
+cuando edio un producto o lo elimino tambien tiene que recargar la pantalla levantando los nuevos valores del producto
+Thought: 636ms
+The user is saying that when they edit or delete a product, the screen needs to reload and pick up the new product values. Let me look at the product-related screens to understand the current flow.
+→Read app/editar-producto.tsx 
+→Read app/producto-detalle.tsx 
+→Read app/(tabs)/catalogo.tsx 
+Thought: 2.2s
+Now I understand the issue clearly. Let me look at the flow:
+
+1. Catalogo screen (app/(tabs)/catalogo.tsx):
+   - Uses useProductos() hook which gives productos, fetchProductos, fetchProductosByComercios, deleteProducto
+   - Has useEffect that calls fetchProductos() or fetchProductosByComercios() depending on mode
+   - BUT it only calls these on mount and when isOwner or selectedComercioId changes
+   - There's NO useFocusEffect to refetch on screen focus
+
+2. Edit product (app/editar-producto.tsx):
+   - After success: updateProducto(...) is called, then router.back() goes back to catalog
+   - But the catalog doesn't refetch products on focus, so the old data is shown
+
+3. Delete product (app/(tabs)/catalogo.tsx):
+   - deleteProducto(product.id) is called, which probably updates the local state
+   - Need to check useProductos to see if it refetches after delete
+
+4. Create product (app/crear-producto.tsx):
+   - Similar issue probably
+
+Let me check useProductos to understand how these operations work:
+✓Explore Task — Find useProductos hook
+↳ 5 toolcalls · 15.6s
+ctrl+x down view subagents
+Thought: 6.7s
+Now I understand the full picture. The issue is:
+
+1. updateProducto in use-productos.ts does optimistic local update only - it doesn't call fetchProductos() after updating. So when the editar-producto screen calls updateProducto and then router.back(), the catalog screen shows the stale productos array (with the optimistic update, which should be correct locally, but if there are server-side computed values or the optimistic update doesn't have all fields, it could be stale).
+
+Actually wait - the optimistic update replaces the product in the local state, so the catalog should show the updated values immediately after the back navigation. But the issue could be if the screen re-mounts and re-initializes its state, or if the useEffect doesn't re-trigger.
+
+Let me look at the catalog screen more carefully:
+
+React.useEffect(() => {
+    if (isOwner) {
+      fetchComercios();
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner]);
+
+This effect only runs when isOwner changes. When navigating back from editar-producto, isOwner doesn't change, so the effect doesn't run.
+
+React.useEffect(() => {
+    if (isOwner && selectedComercioId) {
+      fetchProductosByComercios([selectedComercioId]);
+    }
+  }, [isOwner, selectedComercioId]);
+
+Similarly, this only runs when isOwner or selectedComercioId changes.
+
+So when the user edits a product and comes back, if the productos state in the useProductos hook was already updated optimistically, it should show the new values. If not... it would show stale values.
+
+But there's also the case of delete. deleteProducto optimistically removes from local state. So it should work too.
+
+However, the user is saying "when I edit or delete a product, the screen needs to reload and pick up the new values." This suggests that the optimistic updates aren't working correctly, or there's a race condition.
+
+Let me think about potential issues:
+
+1. Update: updateProducto does:
+setProductos(prev => prev.map((p) => (p.id === id ? { ...p, ...data } : p)));
+Where data is the response from .select() after update. This should have the updated fields.
+
+2. Delete: deleteProducto does:
+setProductos(prev => prev.filter(p => p.id !== id));
+
+These should work. But there could be a scenario where the useFocusEffect in other screens (like the tab layout) causes refetches that clear the optimistic update. Or there could be a timing issue.
+
+Actually, the real issue might be simpler: the catalog screen DOESN'T use useFocusEffect to refetch. It only fetches in useEffect on mount or when isOwner/selectedComercioId changes. So if the user:
+1. Is on the catalog screen
+2. Navigates to editar-producto
+3. Edits and saves
+4. Navigates back (router.back)
+5. The catalog screen is still mounted (since it's in the tab navigator)
+6. The productos state should have the optimistic update from updateProducto
+
+Wait, but updateProducto is called in editar-producto.tsx, not in catalogo.tsx. Both components use the same useProductos hook. Are they sharing the same context/state?
+
+Let me check: useProductos comes from the hook, which is likely a context.
+→Read hooks/use-productos.ts 
+Thought: 10.5s
+Now I see the issue. useProductos is a custom hook (not a context), so each component that uses useProductos() gets its OWN state. This means:
+
+1. catalogo.tsx has its own productos array via useProductos()
+2. editar-producto.tsx has its OWN productos array via useProductos() (though editar-producto doesn't use the productos state directly, it just uses updateProducto)
+3. crear-producto.tsx calls createProducto from useProductos() 
+
+Wait, but editar-producto.tsx only uses updateProducto from the hook - it doesn't use productos state. So when updateProducto is called in editar-producto, it updates the productos state in THAT component's instance of the hook. But the catalogo.tsx has a DIFFERENT instance of the hook, so its productos state is NOT updated.
+
+This is the root cause! Each component using useProductos() gets an independent state. When you edit a product and navigate back, the catalog still shows the old data because its hook instance wasn't updated.
+
+Similarly, the deleteProducto in catalogo.tsx IS in the same component (catalogo), so it correctly updates its own productos state. So delete should work fine. But edit doesn't work because the edit is done in a different component.
+
+Wait, let me re-check editar-producto.tsx. Does it even use useProductos?
+
+Looking at editar-producto.tsx:
+const { updateProducto } = useProductos();
+
+Yes, it creates its own instance of useProductos. When updateProducto is called, it updates the productos state in THAT instance. But catalogo.tsx has a separate instance.
+
+So the fix options are:
+1. Convert useProductos to a context (so all components share the same state)
+2. Add useFocusEffect to catalogo.tsx to refetch products when the screen is focused
+3. Both
+
+The simplest and most consistent fix (similar to how tabs layout uses useFocusEffect for fetchComercios) would be to add a useFocusEffect in catalogo.tsx to refetch products. This is the pattern already used in (tabs)/_layout.tsx.
+
+Actually, looking at the catalog's current effects:
+
+React.useEffect(() => {
+    if (isOwner) {
+      fetchComercios();
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner]);
+
+This only runs on mount and when isOwner changes. It doesn't refetch on focus.
+
+Let me add a useFocusEffect to refetch. Let me also look at the crea-producto.tsx - does it also have the same issue?
+
+Looking at crear-producto.tsx (from the task result), it also uses useProductos separately from catalogo. But crear-producto creates a product, not update. After creation, the optimistic update happens in its own hook instance, not in catalogo's. So catalogo won't see the new product either.
+
+Wait, but actually, the explorer said:
+> createProducto: No full refetch - Optimistically appends
+
+But this is in the crear-producto component's own instance. The catalogo won't see the new product.
+
+OK so the fix is clear: add useFocusEffect to catalogo.tsx to refetch products whenever the screen comes into focus. This is the same pattern used in (tabs)/_layout.tsx for refetching comercios.
+
+Let me also check if editar-producto.tsx loads the product directly from Supabase (it does) and doesn't rely on the hook's state. So the edit screen works fine on its own; the problem is just that when navigating back, the catalog doesn't refetch.
+
+For delete in catalogo.tsx: this calls deleteProducto directly on the catalogo's own hook instance, so the local state is correctly updated. Delete should work fine.
+
+So the fix is: add useFocusEffect to catalogo.tsx to refetch products on screen focus.
+
+Let me also look at producto-detalle.tsx - it fetches the product individually from Supabase on mount. If the user edits a product and goes back to producto-detalle, it would refetch because of the useEffect with id dependency. But if they go directly from editar-producto back to catalogo, the catalogo won't refetch.
+
+Let me also consider: should updateProducto, deleteProducto, and createProducto in the hook also call fetchProductos() afterwards? The toggle functions do that, but the main CRUD functions don't. Making them all call fetchProductos() would be a more robust solution, but might be overkill if we add useFocusEffect.
+
+Actually, the safest and most consistent approach is:
+1. Make updateProducto, deleteProducto, createProducto all call fetchProductos() after their mutations (like the toggle functions do)
+2. AND add useFocusEffect to catalogo.tsx
+
+But option 1 alone might not be enough if there are multiple consumers of the hook with separate instances. Actually, option 1 is only about the individual hook instance refreshing its own data. Since each component has its own instance, calling fetchProductos() in updateProducto would only refresh the editar-producto component's data, not catalogo's data.
+
+So the right fix is to add useFocusEffect in catalogo.tsx to refetch products on focus.
+
+Let me implement this.
+Found the issue. useProductos() is a plain hook (not a context), so each component gets its own state. When editar-producto.tsx calls updateProducto, it updates its own hook instance — not the catalog's. The catalog never refetches.
+The fix: add useFocusEffect to the catalog screen to refetch products on focus.
+← Edit app/(tabs)/catalogo.tsx
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useComercios } from '@/hooks/use-comercios';
+import { useProductos } from '@/hooks/use-productos';
+import { Producto } from '@/types/producto';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Platform,
+Thought: 2.3s
+Now I need to add the useFocusEffect to refetch products. I need to add it after the existing effects, and it should refetch based on the current mode (isOwner vs not).
+
+Let me look at the existing effects:
+
+React.useEffect(() => {
+    if (isOwner) {
+      fetchComercios();
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner]);
+
+  React.useEffect(() => {
+    if (isOwner && ownerComercios.length > 0 && !selectedComercioId) {
+      setSelectedComercioId(ownerComercios[0].id);
+    }
+  }, [isOwner, ownerComercios, selectedComercioId]);
+
+  React.useEffect(() => {
+    if (isOwner && selectedComercioId) {
+      fetchProductosByComercios([selectedComercioId]);
+    }
+  }, [isOwner, selectedComercioId]);
+
+The useFocusEffect should do the same refetch logic. Let me add it after the existing effects.
+
+Wait, I should be careful. The existing effects already handle the initial load. Adding a useFocusEffect will cause a refetch every time the screen comes into focus (including the initial mount). This is fine - the effect deps will handle the logic.
+
+Actually, I should be careful about the order. Let me add the useFocusEffect that mirrors the fetch logic.
+← Edit app/(tabs)/catalogo.tsx
+  if (isDueno && comercios.length > 0) return comercios;
+  return [];
+}, [isDueno, comercios]);
+
+React.useEffect(() => {
+const refreshProductos = useCallback(() => {
+  if (isOwner) {
+    fetchComercios();
+  } else {
+    fetchProductos();
+  }
+}, [isOwner]);
+}, [isOwner, fetchComercios, fetchProductos]);
+
+React.useEffect(() => {
+  refreshProductos();
+}, [refreshProductos]);
+
+useFocusEffect(
+  useCallback(() => {
+    if (isOwner) {
+      if (selectedComercioId) {
+        fetchProductosByComercios([selectedComercioId]);
+      }
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner, selectedComercioId, fetchProductosByComercios, fetchProductos])
+);
+
+React.useEffect(() => {
+  if (isOwner && ownerComercios.length > 0 && !selectedComercioId) {
+    setSelectedComercioId(ownerComercios[0].id);
+  }
+}, [isOwner, ownerComercios, selectedComercioId]);
+
+React.useEffect(() => {
+  if (isOwner && selectedComercioId) {
+    fetchProductosByComercios([selectedComercioId]);
+  }
+}, [isOwner, selectedComercioId]);
+
+const filteredProductos = useMemo(() => {
+  let filtered = productos;
+
+  if (isOwner && selectedComercioId) {
+Thought: 11.1s
+Wait, I made this a bit more complicated than it needs to be. Let me re-examine what I've done:
+
+1. I extracted the initial fetch into a refreshProductos callback
+2. The useEffect with [refreshProductos] runs on mount/when deps change
+3. The useFocusEffect refetches on every focus
+
+But there's an issue: the useFocusEffect for owner mode needs selectedComercioId, which might not be set yet when the effect runs. The existing effect that sets selectedComercioId runs after the first render where ownerComercios has data.
+
+Actually, looking at this more carefully:
+1. On mount, refreshProductos() runs, which for owner calls fetchComercios()
+2. After comercios load, ownerComercios has data, and the effect sets selectedComercioId
+3. This triggers the useFocusEffect again because selectedComercioId changed
+4. Now fetchProductosByComercios([selectedComercioId]) is called
+
+Wait, actually useFocusEffect doesn't re-run when its deps change in the traditional sense. It runs when the screen is focused. But the effect in useFocusEffect is called with the deps, and it re-subscribes (i.e., the cleanup runs and the effect runs again) when deps change. So:
+
+Actually no, useFocusEffect with React's useCallback - when the deps change, the callback reference changes, which triggers useFocusEffect to re-run the effect.
+
+Let me think again:
+1. Component mounts
+2. refreshProductos() effect runs → fetchComercios() for owner (async)
+3. useFocusEffect runs → for owner, selectedComercioId is null, so it does nothing (since if (isOwner && selectedComercioId) is false)... Wait, I wrote if (isOwner) not if (isOwner && selectedComercioId). Let me re-check.
+
+Looking at my code:
+useFocusEffect(
+    useCallback(() => {
+      if (isOwner) {
+        if (selectedComercioId) {
+          fetchProductosByComercios([selectedComercioId]);
+        }
+      } else {
+        fetchProductos();
+      }
+    }, [isOwner, selectedComercioId, fetchProductosByComercios, fetchProductos])
+  );
+
+OK, so when the screen first mounts and focuses:
+- isOwner is true
+- selectedComercioId is null
+- The effect runs but doesn't fetch products (because selectedComercioId is falsy)
+- Later, when selectedComercioId is set, the callback deps change, useFocusEffect re-runs the effect
+- Now fetchProductosByComercios([selectedComercioId]) is called
+
+This works correctly.
+
+But wait, the user will navigate to editar-producto and then come back. When they come back:
+- The screen is focused again
+- useFocusEffect runs
+- selectedComercioId is already set
+- For owner: fetchProductosByComercios([selectedComercioId]) is called
+- For non-owner: fetchProductos() is called
+
+This should refetch the products on every focus. 
+
+However, I'm now running the initial fetch in TWO places:
+1. refreshProductos() in useEffect
+2. useFocusEffect on initial mount
+
+This means on initial mount, both will fire, causing a double fetch. That's wasteful. Let me simplify.
+
+Actually, looking at the original code, the refreshProductos that I created does the same as the original first useEffect:
+if (isOwner) {
+  fetchComercios();
+} else {
+  fetchProductos();
+}
+
+And the useFocusEffect for the owner case calls fetchProductosByComercios. In the original code, fetchProductosByComercios was called in a separate useEffect when selectedComercioId changes.
+
+So on initial load for owner:
+1. refreshProductos() → fetchComercios() 
+2. Comercios load, selectedComercioId gets set
+3. useFocusEffect callback deps change → fetchProductosByComercios([selectedComercioId]) → products load
+
+On refocus (e.g., after editing a product):
+1. useFocusEffect runs → fetchProductosByComercios([selectedComercioId]) → products refresh
+
+This works correctly. The double initial fetch is:
+- refreshProductos() runs fetchComercios()
+- useFocusEffect on initial mount doesn't do anything for owner because selectedComercioId is null
+
+Then when selectedComercioId is set:
+- useFocusEffect callback deps change
+- fetchProductosByComercios is called
+
+This is correct! No double fetch of products.
+
+But wait, fetchComercios is still called on initial mount AND on every focus (from useFocusEffect). Looking at the useFocusEffect:
+
+useFocusEffect(
+    useCallback(() => {
+      if (isOwner) {
+        if (selectedComercioId) {
+          fetchProductosByComercios([selectedComercioId]);
+        }
+      } else {
+        fetchProductos();
+      }
+    }, [isOwner, selectedComercioId, fetchProductosByComercios, fetchProductos])
+  );
+
+For owner mode, the useFocusEffect doesn't call fetchComercios. It only calls fetchProductosByComercios. But fetchComercios is also called in refreshProductos().
+
+Actually, the (tabs)/_layout.tsx already has a useFocusEffect that calls fetchComercios(). So when coming back from editar-producto, the tab layout refetches comercios. The catalog needs to refetch products.
+
+But the issue is still that the refreshProductos function runs fetchComercios for owner, which is redundant with the tab layout's focus effect.
+
+Let me simplify: just replace the initial useEffect with a useFocusEffect and remove the duplicate refreshProductos.
+Let me simplify — the initial useEffect and useFocusEffect overlap. Let me clean this up:
+→Read app/(tabs)/catalogo.tsx [offset=67, limit=40]
+Thought: 6.3s
+The code is fine but I have a redundant refreshProductos that calls fetchComercios for owner mode. The (tabs)/_layout.tsx already calls fetchComercios in its useFocusEffect. So I don't need to also call fetchComercios here.
+
+But wait, refreshProductos was the original first useEffect (lines 67-73 in original). The original code was:
+React.useEffect(() => {
+    if (isOwner) {
+      fetchComercios();
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner]);
+
+This was the initial data load. For non-owner mode, it fetches products. For owner mode, it fetches comercios (needed to populate the commerce chips and determine selectedComercioId).
+
+So I do need the initial fetch for both modes. The refreshProductos (via useEffect) handles the initial load. The useFocusEffect handles refetch on focus.
+
+But for owner mode, I should also fetch comercios on focus, in case the user added a new commerce or deleted one. However, the (tabs)/_layout.tsx handles that already. And the commerce chips are populated from useComercios() which also gets refreshed by the tab layout.
+
+Actually, let me simplify: remove refreshProductos and the related useEffect, and handle the initial load in the useFocusEffect too. The useFocusEffect runs on mount AND on focus, so it handles both cases.
+
+Wait, but for owner mode, the useFocusEffect checks selectedComercioId before fetching products. On initial mount, selectedComercioId is null, so products won't be fetched until selectedComercioId is set (which happens in the other useEffect after comercios load).
+
+So I still need the initial fetchComercios() for owner mode. But actually, the (tabs)/_layout.tsx already has useFocusEffect that calls fetchComercios(). So when the catalog screen mounts (as part of tabs), the tab layout's useFocusEffect will also fire and fetch comercios.
+
+But the timing might not be right: the tab layout's useFocusEffect and the catalog's useFocusEffect might fire independently. We can't guarantee the order.
+
+Let me simplify the code: remove the refreshProductos and just keep the useFocusEffect along with an initial fetch for comercios (for owner mode). Actually, the simplest approach is:
+
+For the initial load, we need:
+1. Non-owner: fetchProductos() 
+2. Owner: fetchComercios() → then selectedComercioId gets set → then fetchProductosByComercios()
+
+For refocus:
+3. Non-owner: fetchProductos()
+4. Owner: fetchProductosByComercios([selectedComercioId])
+
+The useFocusEffect handles cases 3 and 4.
+
+For cases 1 and 2, the original useEffect handles them. So let me keep the original useEffect but remove refreshProductos which is redundant:
+
+Actually, the current code works. Let me just clean it up slightly by removing the redundant refreshProductos and just keeping the original useEffect + useFocusEffect.
+← Edit app/(tabs)/catalogo.tsx
+  if (isDueno && comercios.length > 0) return comercios;
+  return [];
+}, [isDueno, comercios]);
+
+const refreshProductos = useCallback(() => {
+  if (isOwner) {
+    fetchComercios();
+  } else {
+    fetchProductos();
+  }
+}, [isOwner, fetchComercios, fetchProductos]);
+
+React.useEffect(() => {
+  refreshProductos();
+}, [refreshProductos]);
+
+useFocusEffect(
+  useCallback(() => {
+    if (isOwner) {
+      fetchComercios();
+      if (selectedComercioId) {
+        fetchProductosByComercios([selectedComercioId]);
+      }
+    } else {
+      fetchProductos();
+    }
+  }, [isOwner, selectedComercioId, fetchProductosByComercios, fetchProductos])
+  }, [isOwner, selectedComercioId, fetchComercios, fetchProductosByComercios, fetchProductos])
+);
+
+React.useEffect(() => {
+  if (isOwner && ownerComercios.length > 0 && !selectedComercioId) {
+Thought: 4.7s
+Now the useFocusEffect handles both:
+1. Initial load: fetches comercios (for owner) or productos (for non-owner), and if selectedComercioId is already set (unlikely on first load), also fetches productos by comercio
+2. Refocus: fetches comercios again and refetches products with the current selectedComercioId
+
+The separate useEffect sets the initial selectedComercioId after comercios load.
+
+But wait, there's a timing issue. On initial mount:
+1. useFocusEffect fires → calls fetchComercios() for owner
+2. selectedComercioId is null → doesn't fetch products yet
+3. Later, fetchComercios completes, ownerComercios is populated
+4. The effect sets selectedComercioId = ownerComercios[0].id
+5. The useFocusEffect callback's deps change → it re-runs
+6. Now selectedComercioId is set → fetchProductosByComercios([selectedComercioId]) is called
+
+This is correct! 
+
+And when navigating back from editar-producto:
+1. Screen is focused again
+2. useFocusEffect fires
+3. For owner: fetchComercios() and fetchProductosByComercios([selectedComercioId])
+4. Products are refreshed from the server
+
+This fixes the issue.
+
+Let me verify there's no issue with useCallback being called with dependencies that might cause infinite loops. The fetchComercios from useComercios() is stable (memoized), and fetchProductosByComercios/fetchProductos from useProductos() are also memoized. isOwner from useAuth() is derived from role. selectedComercioId is a state variable.
+
+I think this is correct. Let me also check if there's a lint error about the useCallback deps. The useCallback inside useFocusEffect has deps [isOwner, selectedComercioId, fetchComercios, fetchProductosByComercios, fetchProductos]. These are all the values used inside the callback. Good.
+
+Wait, I also need to make sure fetchComercios is imported/available. Let me check. Looking at the imports:
+
+import { useComercios } from '@/hooks/use-comercios';
+
+And in the component:
+const { comercios, fetchComercios } = useComercios();
+
+Yes, fetchComercios is available.
+
+Let me also verify the complete section of the file is correct.
+→Read app/(tabs)/catalogo.tsx [offset=64, limit=35]
+Thought: 687ms
+The code looks clean. Let me now do a quick final check on the import to make sure useFocusEffect and useCallback are properly imported.
+→Read app/(tabs)/catalogo.tsx [offset=1, limit=27]
+Thought: 1.7s
+Imports look correct: useFocusEffect from expo-router, useCallback from react.
+
+The fix is complete. Here's a summary:
+
+Problem: useProductos() is a plain hook (not a context), so each component gets its own isolated state. When editar-producto.tsx calls updateProducto, it updates only its own hook instance — catalogo.tsx never knows about the change. On navigating back, the catalog still shows stale data.
+
+Additionally, crear-producto.tsx has the same issue — after creating a product, the catalog doesn't see the new product.
+
+Fix: Added useFocusEffect to catalogo.tsx that refetches products every time the screen comes into focus. This ensures the catalog always shows fresh data after editing, creating, or deleting products (or any other mutation).
+Done. The changes ensure the catalog always fetches fresh data on focus:
+- Catalogo (app/(tabs)/catalogo.tsx): Replaced the one-shot useEffect with a useFocusEffect that refetches products on every focus — so after editing or deleting a product and navigating back, the screen reloads from the server.

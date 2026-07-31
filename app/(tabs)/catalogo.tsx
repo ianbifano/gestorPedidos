@@ -1,7 +1,7 @@
 import { ConfirmModal } from '@/components/ConfirmModal';
 import { ProductCard } from '@/components/ProductCard';
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useToast } from '@/components/Toast';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -9,20 +9,20 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useComercios } from '@/hooks/use-comercios';
 import { useProductos } from '@/hooks/use-productos';
 import { Producto } from '@/types/producto';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Platform,
-    Pressable,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    useWindowDimensions,
-    View
+  ActivityIndicator,
+  Alert,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View
 } from 'react-native';
 
 export default function CatalogScreen() {
@@ -64,25 +64,24 @@ export default function CatalogScreen() {
     return [];
   }, [isDueno, comercios]);
 
-  React.useEffect(() => {
-    if (isOwner) {
-      fetchComercios();
-    } else {
-      fetchProductos();
-    }
-  }, [isOwner]);
+  useFocusEffect(
+    useCallback(() => {
+      if (isOwner) {
+        fetchComercios();
+        if (selectedComercioId) {
+          fetchProductosByComercios([selectedComercioId]);
+        }
+      } else {
+        fetchProductos();
+      }
+    }, [isOwner, selectedComercioId, fetchComercios, fetchProductosByComercios, fetchProductos])
+  );
 
   React.useEffect(() => {
     if (isOwner && ownerComercios.length > 0 && !selectedComercioId) {
       setSelectedComercioId(ownerComercios[0].id);
     }
   }, [isOwner, ownerComercios, selectedComercioId]);
-
-  React.useEffect(() => {
-    if (isOwner && selectedComercioId) {
-      fetchProductosByComercios([selectedComercioId]);
-    }
-  }, [isOwner, selectedComercioId]);
 
   const filteredProductos = useMemo(() => {
     let filtered = productos;
@@ -292,6 +291,8 @@ export default function CatalogScreen() {
       marginHorizontal: 16,
       marginTop: 10,
       marginBottom: 8,
+      flexGrow: 0,
+      height: 40,
     },
     comercioChip: {
       flexDirection: 'row',
@@ -377,12 +378,6 @@ export default function CatalogScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Catálogo de Productos</Text>
-        <Text style={styles.headerSubtitle}>
-          {isOwner ? 'Administrá tu catálogo de productos' : 'Selecciona los productos que deseas'}
-        </Text>
-      </View>
 
       {isDueno && (
         <View style={styles.modeToggle}>
@@ -409,7 +404,8 @@ export default function CatalogScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.comercioScroll}>
+          style={styles.comercioScroll}
+          contentContainerStyle={{ alignItems: 'center' }}>
           {ownerComercios.map((comercio) => {
             const isActive = comercio.id === selectedComercioId;
             return (

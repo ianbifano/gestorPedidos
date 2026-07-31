@@ -91,7 +91,7 @@ export default function RegisterScreen() {
           ? 'Revise su correo electrónico para confirmar la cuenta antes de iniciar sesión.'
           : 'Su cuenta fue creada correctamente.',
         type: 'success',
-        onClose: () => router.replace((result.needsEmailConfirmation ? '/login' : '/(tabs)') as any),
+        onClose: result.needsEmailConfirmation ? () => router.replace('/login' as any) : undefined,
       });
     } catch (error) {
       showError(getRegisterErrorMessage(error));

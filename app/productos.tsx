@@ -4,8 +4,8 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useComercios } from '@/hooks/use-comercios';
 import { useProductos } from '@/hooks/use-productos';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,15 +28,19 @@ export default function ProductosScreen() {
 
   const comercioIds = useMemo(() => comercios.map(c => c.id), [comercios]);
 
-  useEffect(() => {
-    fetchComercios();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchComercios();
+    }, [fetchComercios])
+  );
 
-  useEffect(() => {
-    if (comercioIds.length > 0) {
-      fetchProductosByComercios(comercioIds);
-    }
-  }, [comercioIds.join(',')]);
+  useFocusEffect(
+    useCallback(() => {
+      if (comercioIds.length > 0) {
+        fetchProductosByComercios(comercioIds);
+      }
+    }, [comercioIds, fetchProductosByComercios])
+  );
 
   const handleDelete = (id: number) => {
     if (!id || isNaN(id)) {

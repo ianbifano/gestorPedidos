@@ -1,6 +1,7 @@
 import { ThemedView } from '@/components/themed-view';
 import { useToast } from '@/components/Toast';
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useComercios } from '@/hooks/use-comercios';
 import { Validators } from '@/hooks/validators';
@@ -12,6 +13,7 @@ export default function CrearComercioScreen() {
   const [nombre, setNombre] = useState('');
   const [loading, setLoading] = useState(false);
   const { createComercio, error } = useComercios();
+  const { refreshRole } = useAuth();
   const { show: showToast } = useToast();
   const router = useRouter();
   const scheme = useColorScheme() ?? 'light';
@@ -30,6 +32,7 @@ export default function CrearComercioScreen() {
       console.log('[CREAR_COMERCIO] calling createComercio with:', nombre.trim());
       const nuevo = await createComercio(nombre.trim());
       console.log('[CREAR_COMERCIO] createComercio OK, data:', nuevo);
+      await refreshRole();
       showToast('✓ Comercio creado correctamente', 'success');
       router.back();
     } catch (err) {
